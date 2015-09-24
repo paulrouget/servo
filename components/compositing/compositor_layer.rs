@@ -13,7 +13,7 @@ use layers::geometry::LayerPixel;
 use layers::layers::{Layer, LayerBufferSet};
 use msg::compositor_msg::{Epoch, LayerId, LayerProperties, ScrollPolicy};
 use msg::constellation_msg::PipelineId;
-use script_traits::CompositorEvent::{ClickEvent, MouseDownEvent, MouseMoveEvent, MouseUpEvent};
+use script_traits::CompositorEvent::{ClickEvent, MouseDownEvent, MouseMoveEvent, MouseUpEvent, TouchpadPressureEvent};
 use script_traits::ConstellationControlMsg;
 use std::rc::Rc;
 use windowing::{MouseWindowEvent, WindowMethods};
@@ -139,6 +139,13 @@ pub trait CompositorLayer {
     fn clamp_scroll_offset_and_scroll_layer(&self,
                                             new_offset: TypedPoint2D<LayerPixel, f32>)
                                             -> ScrollEventResult;
+
+    fn send_touchpad_pressure_event<Window>(&self,
+                                            compositor: &IOCompositor<Window>,
+                                            cursor: TypedPoint2D<LayerPixel, f32>,
+                                            pressure: f32)
+                                            where Window: WindowMethods;
+
 
     fn scroll_layer_and_all_child_layers(&self,
                                          new_offset: TypedPoint2D<LayerPixel, f32>)
@@ -412,6 +419,16 @@ impl CompositorLayer for Layer<CompositorData> {
                                      cursor: TypedPoint2D<LayerPixel, f32>)
                                      where Window: WindowMethods {
         let message = MouseMoveEvent(cursor.to_untyped());
+        let pipeline = compositor.pipeline(self.pipeline_id());
+        let _ = pipeline.script_chan.send(ConstellationControlMsg::SendEvent(pipeline.id.clone(), message));
+    }
+
+    fn send_touchpad_pressure_event<Window>(&self,
+                                           compositor: &IOCompositor<Window>,
+                                           cursor: TypedPoint2D<LayerPixel, f32>,
+                                           pressure: f32)
+                                           where Window: WindowMethods {
+        let message = TouchpadPressureEvent(cursor.to_untyped(), pressure);
         let pipeline = compositor.pipeline(self.pipeline_id());
         let _ = pipeline.script_chan.send(ConstellationControlMsg::SendEvent(pipeline.id.clone(), message));
     }

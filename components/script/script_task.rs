@@ -78,7 +78,7 @@ use profile_traits::mem::{self, OpaqueSender, Report, ReportKind, ReportsChan};
 use profile_traits::time::{self, ProfilerCategory, profile};
 use script_traits::CompositorEvent::{ClickEvent, ResizeEvent};
 use script_traits::CompositorEvent::{KeyEvent, MouseMoveEvent};
-use script_traits::CompositorEvent::{MouseDownEvent, MouseUpEvent};
+use script_traits::CompositorEvent::{MouseDownEvent, MouseUpEvent, TouchpadPressureEvent};
 use script_traits::{CompositorEvent, ConstellationControlMsg};
 use script_traits::{InitialScriptState, MouseButton, NewLayoutInfo};
 use script_traits::{OpaqueScriptLayoutChannel, ScriptState, ScriptTaskFactory};
@@ -1690,6 +1690,12 @@ impl ScriptTask {
 
             MouseUpEvent(button, point) => {
                 self.handle_mouse_event(pipeline_id, MouseEventType::MouseUp, button, point);
+            }
+
+            TouchpadPressureEvent(point, pressure) => {
+                let page = get_page(&self.root_page(), pipeline_id);
+                let document = page.document();
+                document.r().handle_touchpad_pressure_event(self.js_runtime.rt(), point, pressure);
             }
 
             MouseMoveEvent(point) => {

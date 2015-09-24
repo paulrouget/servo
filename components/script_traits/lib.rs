@@ -162,6 +162,8 @@ pub enum CompositorEvent {
     MouseUpEvent(MouseButton, Point2D<f32>),
     /// The mouse was moved over a point.
     MouseMoveEvent(Point2D<f32>),
+    /// Touchpad events
+    TouchpadPressureEvent(Point2D<f32>, f32),
     /// A key was pressed.
     KeyEvent(Key, KeyState, KeyModifiers),
 }

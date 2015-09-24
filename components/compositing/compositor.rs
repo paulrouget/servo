@@ -957,6 +957,10 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.on_navigation_window_event(direction);
             }
 
+            WindowEvent::TouchpadPressure(cursor, pressure) => {
+                self.on_touchpad_pressure_event(cursor, pressure);
+            }
+
             WindowEvent::KeyEvent(key, state, modifiers) => {
                 self.on_key_event(key, state, modifiers);
             }
@@ -1022,6 +1026,13 @@ impl<Window: WindowMethods> IOCompositor<Window> {
     fn on_mouse_window_move_event_class(&self, cursor: TypedPoint2D<DevicePixel, f32>) {
         match self.find_topmost_layer_at_point(cursor / self.scene.scale) {
             Some(result) => result.layer.send_mouse_move_event(self, result.point),
+            None => {},
+        }
+    }
+
+    fn on_touchpad_pressure_event(&self, cursor: TypedPoint2D<DevicePixel, f32>, pressure: f32) {
+        match self.find_topmost_layer_at_point(cursor / self.scene.scale) {
+            Some(result) => result.layer.send_touchpad_pressure_event(self, result.point, pressure),
             None => {},
         }
     }

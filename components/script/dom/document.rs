@@ -25,6 +25,7 @@ use dom::bindings::codegen::InheritTypes::{HTMLAreaElementDerived, HTMLEmbedElem
 use dom::bindings::codegen::InheritTypes::{HTMLFormElementDerived, HTMLImageElementDerived};
 use dom::bindings::codegen::InheritTypes::{HTMLScriptElementDerived, HTMLTitleElementDerived};
 use dom::bindings::codegen::UnionTypes::NodeOrString;
+use dom::bindings::conversions::{ToJSValConvertible};
 use dom::bindings::error::Error::HierarchyRequest;
 use dom::bindings::error::Error::{InvalidCharacter, NotSupported, Security};
 use dom::bindings::error::{ErrorResult, Fallible};
@@ -69,7 +70,8 @@ use dom::window::{ReflowReason, Window};
 use euclid::point::Point2D;
 use html5ever::tree_builder::{LimitedQuirks, NoQuirks, Quirks, QuirksMode};
 use ipc_channel::ipc::{self, IpcSender};
-use js::jsapi::{JSContext, JSObject, JSRuntime};
+use js::jsapi::{JSContext, JSObject, JSRuntime, JSAutoCompartment, JSAutoRequest, RootedValue};
+use js::jsval::UndefinedValue;
 use layout_interface::{HitTestResponse, MouseOverResponse};
 use layout_interface::{LayoutChan, Msg};
 use layout_interface::{ReflowGoal, ReflowQueryType};
@@ -641,6 +643,49 @@ impl Document {
         }
         window.r().reflow(ReflowGoal::ForDisplay, ReflowQueryType::NoQuery, ReflowReason::MouseEvent);
     }
+
+    pub fn handle_touchpad_pressure_event(&self, js_runtime: *mut JSRuntime,
+                          point: Point2D<f32>,
+                          pressure: f32) {
+
+        let node = match self.hit_test(&point) {
+            Some(node_address) => {
+                debug!("node address is {:?}", node_address.0);
+                node::from_untrusted_node_address(js_runtime, node_address)
+            },
+            None => return,
+        };
+
+        let el = match ElementCast::to_ref(node.r()) {
+            Some(el) => Root::from_ref(el),
+            None => {
+                let parent = node.r().GetParentNode();
+                match parent.and_then(ElementCast::to_root) {
+                    Some(parent) => parent,
+                    None => return,
+                }
+            },
+        };
+
+        let node = NodeCast::from_ref(el.r());
+        let target = EventTargetCast::from_ref(node);
+
+        let window = self.window.root();
+
+        let cx = window.r().get_cx();
+        let _ar = JSAutoRequest::new(cx);
+        let _ac = JSAutoCompartment::new(cx, window.reflector().get_jsobject().get());
+        let mut detail = RootedValue::new(cx, UndefinedValue());
+        pressure.to_jsval(cx, detail.handle_mut());
+        let event = CustomEvent::new(GlobalRef::Window(window.r()),
+                                            "touchpadpressure".to_owned(),
+                                            true,
+                                            true,
+                                            detail.handle());
+        let event = EventCast::from_ref(event.r());
+        event.fire(target);
+    }
+
 
     pub fn fire_mouse_event(&self,
                         point: Point2D<f32>,

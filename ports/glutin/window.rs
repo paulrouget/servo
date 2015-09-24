@@ -200,6 +200,11 @@ impl Window {
                 self.event_queue.borrow_mut().push(
                     WindowEvent::MouseWindowMoveEventClass(Point2D::typed(x as f32, y as f32)));
             }
+            Event::TouchpadPressure(pressure) => {
+                let m = self.mouse_pos.get();
+                let point = Point2D::typed(m.x as f32, m.y as f32);
+                self.event_queue.borrow_mut().push(WindowEvent::TouchpadPressure(point, pressure));
+            }
             Event::MouseWheel(delta) => {
                 if self.ctrl_pressed() {
                     // Ctrl-Scrollwheel simulates a "pinch zoom" gesture.
