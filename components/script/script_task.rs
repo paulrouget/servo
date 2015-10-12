@@ -1054,7 +1054,19 @@ impl ScriptTask {
         if let Some(ref page) = page.as_ref() {
             if let Some(ref page) = page.find(id) {
                 let window = page.window();
-                window.r().set_resize_event(size);
+
+                let size_changed = match window.r().window_size() {
+                    Some(window_size) => {
+                        window_size.visible_viewport != size.visible_viewport ||
+                        window_size.initial_viewport != size.initial_viewport ||
+                        window_size.device_pixel_ratio != size.device_pixel_ratio
+                    },
+                    None => true
+                };
+
+                if size_changed {
+                    window.r().set_resize_event(size);
+                }
                 return;
             }
         }
