@@ -734,13 +734,12 @@ impl<Window: WindowMethods> IOCompositor<Window> {
     }
 
     fn update_layer_if_exists(&mut self, pipeline_id: PipelineId, properties: LayerProperties)
-                              -> bool {
+                              -> (bool, bool) {
         match self.find_layer_with_pipeline_and_layer_id(pipeline_id, properties.id) {
             Some(existing_layer) => {
-                existing_layer.update_layer(properties);
-                true
+                (true, existing_layer.update_layer(properties))
             }
-            None => false,
+            None => (false, true),
         }
     }
 
@@ -759,8 +758,8 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             }
         };
 
-        let need_new_base_layer = !self.update_layer_if_exists(pipeline_id, layer_properties);
-        if need_new_base_layer {
+        let (no_need_new_base_layer,_) = self.update_layer_if_exists(pipeline_id, layer_properties);
+        if !no_need_new_base_layer {
             root_layer.update_layer_except_bounds(layer_properties);
 
             let base_layer = CompositorData::new_layer(
@@ -785,10 +784,15 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                                          layer_properties: LayerProperties) {
         debug_assert!(layer_properties.parent_id.is_some());
 
-        if !self.update_layer_if_exists(pipeline_id, layer_properties) {
+        let (a, b) = self.update_layer_if_exists(pipeline_id, layer_properties);
+        if !a {
             self.create_descendant_layer(pipeline_id, layer_properties);
         }
-        self.update_subpage_size_if_necessary(&layer_properties);
+        if b {
+            self.update_subpage_size_if_necessary(&layer_properties);
+        } else {
+            println!("SKIP");
+        }
         self.scroll_layer_to_fragment_point_if_necessary(pipeline_id,
                                                          layer_properties.id);
     }

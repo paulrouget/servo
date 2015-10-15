@@ -78,7 +78,7 @@ impl CompositorData {
 pub trait CompositorLayer {
     fn update_layer_except_bounds(&self, layer_properties: LayerProperties);
 
-    fn update_layer(&self, layer_properties: LayerProperties);
+    fn update_layer(&self, layer_properties: LayerProperties) -> bool;
 
     fn add_buffers<Window>(&self,
                            compositor: &mut IOCompositor<Window>,
@@ -214,13 +214,17 @@ impl CompositorLayer for Layer<CompositorData> {
         self.contents_changed();
     }
 
-    fn update_layer(&self, layer_properties: LayerProperties) {
-        *self.bounds.borrow_mut() = Rect::from_untyped(&layer_properties.rect);
+    fn update_layer(&self, layer_properties: LayerProperties) -> bool {
+        let mut old_bounds = self.bounds.borrow_mut();
+        let new_bounds = Rect::from_untyped(&layer_properties.rect);
+        let size_changed = old_bounds.size != new_bounds.size;
+        *old_bounds = new_bounds;
 
         // Call scroll for bounds checking if the page shrunk. Use (-1, -1) as the
         // cursor position to make sure the scroll isn't propagated downwards.
         self.handle_scroll_event(Point2D::typed(0f32, 0f32), Point2D::typed(-1f32, -1f32));
         self.update_layer_except_bounds(layer_properties);
+        size_changed
     }
 
     // Add LayerBuffers to the specified layer. Returns the layer buffer set back if the layer that
