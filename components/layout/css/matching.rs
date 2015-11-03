@@ -32,6 +32,7 @@ use util::cache::{LRUCache, SimpleHashCache};
 use util::opts;
 use util::vec::ForgetfulSink;
 use wrapper::{LayoutElement, LayoutNode};
+use clock_ticks;
 
 pub struct ApplicableDeclarations {
     pub normal: SmallVec<[DeclarationBlock; 16]>,
@@ -446,9 +447,23 @@ impl<'ln> PrivateMatchMethods for LayoutNode<'ln> {
         if animate_properties {
             if let Some(ref mut style) = *style {
                 let this_opaque = self.opaque();
-                if let Some(ref animations) = layout_context.running_animations.get(&this_opaque) {
+                if let Some(ref animations) = layout_context.finished_animations.get(&this_opaque) {
                     for animation in *animations {
                         animation.property_animation.update(&mut *Arc::make_mut(style), 1.0);
+                    }
+                    // FIXME: empty finished_animations
+                }
+                if let Some(ref animations) = layout_context.running_animations.get(&this_opaque) {
+                    for animation in *animations {
+                        // FIXME: cancel animation
+                        let now = clock_ticks::precise_time_s();
+                        let mut progress = (now - animation.start_time) / animation.duration();
+                        if progress > 1.0 {
+                            progress = 1.0
+                        }
+                        if progress > 0.0 {
+                            animation.property_animation.update(&mut *Arc::make_mut(style), progress);
+                        }
                     }
                 }
             }

@@ -143,6 +143,8 @@ pub struct LayoutTaskData {
     /// The list of currently-running animations.
     pub running_animations: Arc<HashMap<OpaqueNode, Vec<Animation>>>,
 
+    pub finished_animations: Arc<HashMap<OpaqueNode, Vec<Animation>>>,
+
     /// Receives newly-discovered animations.
     pub new_animations_receiver: Receiver<Animation>,
 
@@ -417,6 +419,7 @@ impl LayoutTask {
                     client_rect_response: Rect::zero(),
                     resolved_style_response: None,
                     running_animations: Arc::new(HashMap::new()),
+                    finished_animations: Arc::new(HashMap::new()),
                     offset_parent_response: OffsetParentResponse::empty(),
                     visible_rects: Arc::new(HashMap::with_hash_state(Default::default())),
                     new_animations_receiver: new_animations_receiver,
@@ -458,6 +461,7 @@ impl LayoutTask {
             new_animations_sender: rw_data.new_animations_sender.clone(),
             goal: goal,
             running_animations: rw_data.running_animations.clone(),
+            finished_animations: rw_data.finished_animations.clone(),
         }
     }
 

@@ -57,10 +57,25 @@ pub fn update_animation_state(rw_data: &mut LayoutTaskData, pipeline_id: Pipelin
     }
 
     let mut running_animations_hash = (*rw_data.running_animations).clone();
+    let mut finished_animations_hash = (*rw_data.finished_animations).clone();
 
     // Expire old running animations.
     let now = clock_ticks::precise_time_s();
     let mut keys_to_remove = Vec::new();
+
+    for (_, running_animations) in &mut running_animations_hash {
+        for animation in running_animations {
+            if now >= animation.end_time {
+                match finished_animations_hash.entry(OpaqueNode(animation.node)) {
+                    Entry::Vacant(entry) => {
+                        entry.insert(vec![(*animation).clone()]);
+                    }
+                    Entry::Occupied(mut entry) => entry.get_mut().push((*animation).clone()),
+                }
+            }
+        }
+    }
+
     for (key, running_animations) in &mut running_animations_hash {
         running_animations.retain(|running_animation| {
             now < running_animation.end_time
@@ -84,6 +99,7 @@ pub fn update_animation_state(rw_data: &mut LayoutTaskData, pipeline_id: Pipelin
     }
 
     rw_data.running_animations = Arc::new(running_animations_hash);
+    rw_data.finished_animations = Arc::new(finished_animations_hash);
 
     let animation_state;
     if rw_data.running_animations.is_empty() {
