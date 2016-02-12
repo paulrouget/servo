@@ -789,15 +789,15 @@ impl XMLHttpRequest {
     fn process_headers_available(&self, cors_request: Option<CORSRequest>,
                                  gen_id: GenerationId, metadata: Metadata) -> Result<(), Error> {
 
-        if let Some(ref req) = cors_request {
-            match metadata.headers {
-                Some(ref h) if allow_cross_origin_request(req, h) => {},
-                _ => {
-                    self.process_partial_response(XHRProgress::Errored(gen_id, Error::Network));
-                    return Err(Error::Network);
-                }
-            }
-        }
+        // if let Some(ref req) = cors_request {
+        //     match metadata.headers {
+        //         Some(ref h) if allow_cross_origin_request(req, h) => {},
+        //         _ => {
+        //             self.process_partial_response(XHRProgress::Errored(gen_id, Error::Network));
+        //             return Err(Error::Network);
+        //         }
+        //     }
+        // }
 
         // XXXManishearth Clear cache entries in case of a network error
         self.process_partial_response(XHRProgress::HeadersReceived(gen_id,
