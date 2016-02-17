@@ -29,6 +29,8 @@
         element: input1,
         expected_events: [
           {element: input1, event_name: "focus"},
+          {element: input1, event_name: "focusin"},
+          {element: div, event_name: "focusin"}
         ]
       },
 
@@ -36,7 +38,11 @@
         element: input2,
         expected_events: [
           {element: input1, event_name: "blur"},
+          {element: input1, event_name: "focusout"},
+          {element: div, event_name: "focusout"},
           {element: input2, event_name: "focus"},
+          {element: input2, event_name: "focusin"},
+          {element: div, event_name: "focusin"}
         ]
       },
 
@@ -44,7 +50,10 @@
         element: input3,
         expected_events: [
           {element: input2, event_name: "blur"},
+          {element: input2, event_name: "focusout"},
+          {element: div, event_name: "focusout"},
           {element: input3, event_name: "focus"},
+          {element: input3, event_name: "focusin"}
         ]
       },
 
@@ -52,6 +61,7 @@
         element: document.body,
         expected_events: [
           {element: input3, event_name: "blur"},
+          {element: input3, event_name: "focusout"}
         ]
       }
 
@@ -78,7 +88,7 @@
     }
 
     for (var element of [div, input1, input2, input3]) {
-      for (var event_name of ["focus", "blur"]) {
+      for (var event_name of ["focus", "blur", "focusin", "focusout"]) {
         element.addEventListener(event_name, (function(element) {
           return function(event) {
             on_event(element, event.type);

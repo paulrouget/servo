@@ -588,6 +588,7 @@ impl Document {
             elem.set_focus_state(false);
             // FIXME: pass appropriate relatedTarget
             self.fire_focus_event(FocusEventType::Blur, node, None);
+            self.fire_focus_event(FocusEventType::FocusOut, node, None);
         }
 
         self.focused.set(self.possibly_focused.get().r());
@@ -597,6 +598,8 @@ impl Document {
             let node = elem.upcast::<Node>();
             // FIXME: pass appropriate relatedTarget
             self.fire_focus_event(FocusEventType::Focus, node, None);
+            self.fire_focus_event(FocusEventType::FocusIn, node, None);
+
             // Update the focus state for all elements in the focus chain.
             // https://html.spec.whatwg.org/multipage/#focus-chain
             if focus_type == FocusType::Element {
@@ -1429,6 +1432,8 @@ impl Document {
         let (event_name, does_bubble) = match focus_event_type {
             FocusEventType::Focus => (DOMString::from("focus"), EventBubbles::DoesNotBubble),
             FocusEventType::Blur => (DOMString::from("blur"), EventBubbles::DoesNotBubble),
+            FocusEventType::FocusOut => (DOMString::from("focusout"), EventBubbles::Bubbles),
+            FocusEventType::FocusIn => (DOMString::from("focusin"), EventBubbles::Bubbles),
         };
         let event = FocusEvent::new(&self.window,
                                     event_name,
@@ -2571,4 +2576,6 @@ pub enum FocusType {
 pub enum FocusEventType {
     Focus,      // Element gained focus. Doesn't bubble.
     Blur,       // Element lost focus. Doesn't bubble.
+    FocusIn,    // Element gained focus. Does bubble.
+    FocusOut,   // Element lost focus. Does bubble.
 }
