@@ -693,6 +693,10 @@ impl<LTF: LayoutThreadFactory, STF: ScriptThreadFactory> Constellation<LTF, STF>
                 debug!("constellation got remove iframe message");
                 self.handle_remove_iframe_msg(pipeline_id);
             }
+            Request::Script(FromScriptMsg::SetVisible(pipeline_id, visible)) => {
+                debug!("constellation got setVisible iframe message");
+                self.handle_set_visible_msg(pipeline_id, visible);
+            }
             Request::Script(FromScriptMsg::NewFavicon(url)) => {
                 debug!("constellation got new favicon message");
                 self.compositor_proxy.send(ToCompositorMsg::NewFavicon(url));
@@ -1196,6 +1200,14 @@ impl<LTF: LayoutThreadFactory, STF: ScriptThreadFactory> Constellation<LTF, STF>
                 // still needs to be shut down.
                 self.close_pipeline(pipeline_id, ExitPipelineMode::Normal);
             }
+        }
+    }
+
+    fn handle_set_visible_msg(&self, pipeline_id: PipelineId, visible: bool) {
+        if visible {
+            self.pipeline(pipeline_id).thaw();
+        } else {
+            self.pipeline(pipeline_id).freeze();
         }
     }
 
