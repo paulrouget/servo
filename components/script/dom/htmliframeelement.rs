@@ -10,6 +10,7 @@ use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementIconC
 use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementLocationChangeEventDetail;
 use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementOpenTabEventDetail;
 use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementOpenWindowEventDetail;
+use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementOverscrollEventDetail;
 use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementSecurityChangeDetail;
 use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementVisibilityChangeEventDetail;
 use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserShowModalPromptEventDetail;
@@ -21,6 +22,7 @@ use dom::bindings::error::{Error, ErrorResult, Fallible};
 use dom::bindings::global::GlobalRef;
 use dom::bindings::inheritance::Castable;
 use dom::bindings::js::{JS, LayoutJS, MutNullableHeap, Root};
+use dom::bindings::num::Finite;
 use dom::bindings::reflector::Reflectable;
 use dom::bindings::str::DOMString;
 use dom::browsingcontext::BrowsingContext;
@@ -340,6 +342,12 @@ unsafe fn build_mozbrowser_event_detail(event: MozBrowserEvent,
                 description: Some(DOMString::from(description)),
                 report: Some(DOMString::from(report)),
                 version: Some(DOMString::from_string(servo_version())),
+            }.to_jsval(cx, rval);
+        },
+        MozBrowserEvent::Overscroll(delta) => {
+            BrowserElementOverscrollEventDetail {
+                x: Some(Finite::wrap(delta.x)),
+                y: Some(Finite::wrap(delta.y)),
             }.to_jsval(cx, rval);
         },
         MozBrowserEvent::SecurityChange(https_state) => {

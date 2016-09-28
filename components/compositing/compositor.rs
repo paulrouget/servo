@@ -405,8 +405,8 @@ impl webrender_traits::RenderNotifier for RenderNotifier {
         self.compositor_proxy.recomposite(CompositingReason::NewWebRenderFrame);
     }
 
-    fn new_scroll_frame_ready(&mut self, composite_needed: bool) {
-        self.compositor_proxy.send(Msg::NewScrollFrameReady(composite_needed));
+    fn new_scroll_frame_ready(&mut self, composite_needed: bool, delta: Point2D<f32>) {
+        self.compositor_proxy.send(Msg::NewScrollFrameReady(composite_needed, delta));
     }
 
     fn pipeline_size_changed(&mut self,
@@ -797,11 +797,18 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 }
             }
 
-            (Msg::NewScrollFrameReady(recomposite_needed), ShutdownState::NotShuttingDown) => {
+            (Msg::NewScrollFrameReady(recomposite_needed, delta), ShutdownState::NotShuttingDown) => {
                 self.waiting_for_results_of_scroll = false;
                 if recomposite_needed {
                     self.composition_request = CompositionRequest::CompositeNow(
                         CompositingReason::NewWebRenderScrollFrame);
+                } else {
+                    if delta.x != 0.0 || delta.y != 0.0 {
+                        let msg = ConstellationMsg::Overscroll(delta);
+                        if let Err(e) = self.constellation_chan.send(msg) {
+                            warn!("Sending overscroll to constellation failed ({}).", e);
+                        }
+                    }
                 }
             }
 

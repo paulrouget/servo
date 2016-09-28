@@ -97,6 +97,11 @@ dictionary BrowserElementOpenWindowEventDetail {
   // Element frameElement;
 };
 
+dictionary BrowserElementOverscrollEventDetail {
+  float x;
+  float y;
+};
+
 dictionary BrowserElementVisibilityChangeEventDetail {
   boolean visible;
 };

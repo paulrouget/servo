@@ -507,6 +507,8 @@ pub enum MozBrowserEvent {
     OpenSearch,
     /// Sent when visibility state changes.
     VisibilityChange(bool),
+    /// Overscroll
+    Overscroll(Point2D<f32>),
 }
 
 impl MozBrowserEvent {
@@ -530,6 +532,7 @@ impl MozBrowserEvent {
             MozBrowserEvent::UsernameAndPasswordRequired => "mozbrowserusernameandpasswordrequired",
             MozBrowserEvent::OpenSearch => "mozbrowseropensearch",
             MozBrowserEvent::VisibilityChange(_) => "mozbrowservisibilitychange",
+            MozBrowserEvent::Overscroll(_) => "mozbrowseroverscroll",
         }
     }
 }
@@ -634,6 +637,8 @@ pub enum ConstellationMsg {
     TraverseHistory(Option<PipelineId>, TraversalDirection),
     /// Inform the constellation of a window being resized.
     WindowSize(WindowSizeData, WindowSizeType),
+    /// FIXME
+    Overscroll(Point2D<f32>),
     /// Requests that the constellation instruct layout to begin a new tick of the animation.
     TickAnimation(PipelineId, AnimationTickType),
     /// Dispatch a webdriver command

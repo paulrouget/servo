@@ -19,6 +19,7 @@ use compositing::compositor_thread::Msg as ToCompositorMsg;
 use devtools_traits::{ChromeToDevtoolsControlMsg, DevtoolsControlMsg};
 use euclid::scale_factor::ScaleFactor;
 use euclid::size::{Size2D, TypedSize2D};
+use euclid::Point2D;
 use gfx::font_cache_thread::FontCacheThread;
 use gfx_traits::Epoch;
 use ipc_channel::ipc::{self, IpcSender};
@@ -794,6 +795,10 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
             FromCompositorMsg::WindowSize(new_size, size_type) => {
                 debug!("constellation got window resize message");
                 self.handle_window_size_msg(new_size, size_type);
+            }
+            FromCompositorMsg::Overscroll(delta) => {
+                debug!("constellation got overscroll message");
+                self.handle_overscroll_msg(delta);
             }
             FromCompositorMsg::TickAnimation(pipeline_id, tick_type) => {
                 self.handle_tick_animation(pipeline_id, tick_type)
@@ -2105,6 +2110,22 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
         }
 
         self.window_size = new_size;
+    }
+
+    fn handle_overscroll_msg(&mut self, delta: Point2D<f32>) {
+        if !PREFS.is_mozbrowser_enabled() { return; }
+
+        let event = MozBrowserEvent::Overscroll(delta);
+
+        if let Some(root_frame_id) = self.root_frame_id {
+            if let Some(root_frame) = self.frames.get(&root_frame_id) {
+                if let Some(root_pipeline) = self.pipelines.get(&root_frame.current.pipeline_id) {
+                    return root_pipeline.trigger_mozbrowser_event(None, event);
+                }
+            }
+        }
+
+        warn!("Mozbrowser overscroll after root pipeline closed.");
     }
 
     /// Handle updating actual viewport / zoom due to @viewport rules
