@@ -761,7 +761,12 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
             }
             FromCompositorMsg::KeyEvent(ch, key, state, modifiers) => {
                 debug!("constellation got key event message");
-                self.handle_key_msg(ch, key, state, modifiers);
+                let (sender, receiver) = ipc::channel().unwrap();
+                self.root_key_event(ch, key, state, modifiers, true, sender);
+                if receiver.recv().unwrap() {
+                    // FIXME: send back to compositor
+                    // Or use a resp_chan created in compositor
+                }
             }
             // Load a new page from a typed url
             // If there is already a pending page (self.pending_frames), it will not be overridden;
@@ -979,8 +984,8 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
                 self.compositor_proxy.send(ToCompositorMsg::ChangePageTitle(pipeline_id, title))
             }
 
-            FromScriptMsg::SendKeyEvent(ch, key, key_state, key_modifiers) => {
-                self.compositor_proxy.send(ToCompositorMsg::KeyEvent(ch, key, key_state, key_modifiers))
+            FromScriptMsg::SendKeyEventToFocusedPipeline(ch, key, key_state, key_modifiers, resp_chan) => {
+                self.root_key_event(ch, key, key_state, key_modifiers, false, resp_chan);
             }
 
             FromScriptMsg::TouchEventProcessed(result) => {
@@ -1544,19 +1549,25 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
         let _ = sender.send(length as u32);
     }
 
-    fn handle_key_msg(&mut self, ch: Option<char>, key: Key, state: KeyState, mods: KeyModifiers) {
-        // Send to the explicitly focused pipeline (if it exists), or the root
-        // frame's current pipeline. If neither exist, fall back to sending to
-        // the compositor below.
+    fn root_key_event(&mut self, ch: Option<char>, key: Key, state: KeyState, mods: KeyModifiers, from_compositor: bool, resp_chan: IpcSender<bool>) {
+        println!("constellation::root_key_event. from_compositor? {:?}", from_compositor);
         let root_pipeline_id = self.root_frame_id
             .and_then(|root_frame_id| self.frames.get(&root_frame_id))
             .map(|root_frame| root_frame.current.pipeline_id);
-        let pipeline_id = self.focus_pipeline_id.or(root_pipeline_id);
+        let pipeline_id = if from_compositor && PREFS.is_mozbrowser_enabled() {
+            println!("constellation::root_key_event. Sending to root pipeline");
+            root_pipeline_id
+        } else {
+            println!("constellation::root_key_event. Sending to focused");
+            self.focus_pipeline_id.or(root_pipeline_id)
+        };
 
-        match pipeline_id {
-            Some(pipeline_id) => {
-                let event = CompositorEvent::KeyEvent(ch, key, state, mods);
+        if let Some(pipeline_id) = pipeline_id {
+            let prevented = {
+                let (prevented_sender, prevented_receiver) = ipc::channel().expect("Failed to create IPC channel!");
+                let event = CompositorEvent::KeyEvent(ch, key, state, mods, prevented_sender);
                 let msg = ConstellationControlMsg::SendEvent(pipeline_id, event);
+                println!("constellation::root_key_event. sending to script chan…");
                 let result = match self.pipelines.get(&pipeline_id) {
                     Some(pipeline) => pipeline.script_chan.send(msg),
                     None => return debug!("Pipeline {:?} got key event after closure.", pipeline_id),
@@ -1564,11 +1575,28 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
                 if let Err(e) = result {
                     self.handle_send_error(pipeline_id, e);
                 }
-            },
-            None => {
-                let event = ToCompositorMsg::KeyEvent(ch, key, state, mods);
-                self.compositor_proxy.clone_compositor_proxy().send(event);
+
+                match prevented_receiver.recv() {
+                    Err(e) => {
+                        warn!("Failed to receive preventDefault value ({}).", e);
+                        false
+                    },
+                    Ok(prevented) => prevented,
+                }
+            };
+            println!("constellation::root_key_event. prevented: {:?}", prevented);
+
+            if let Err(e) = resp_chan.send(prevented) {
+                warn!("Failed XXX ({}).", e);
             }
+        } else {
+            // Send to the explicitly focused pipeline (if it exists), or the root
+            // frame's current pipeline. If neither exist, fall back to sending to
+            // the compositor below.
+            // FIXME: if pipeline_id is None:
+            // let event = ToCompositorMsg::KeyEvent(ch, key, state, mods);
+            // self.compositor_proxy.clone_compositor_proxy().send(event);
+            println!("BOOM");
         }
     }
 
@@ -1785,11 +1813,12 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
                     None => return warn!("Pipeline {:?} SendKeys after closure.", pipeline_id),
                 };
                 for (key, mods, state) in cmd {
-                    let event = CompositorEvent::KeyEvent(None, key, state, mods);
-                    let control_msg = ConstellationControlMsg::SendEvent(pipeline_id, event);
-                    if let Err(e) = script_channel.send(control_msg) {
-                        return self.handle_send_error(pipeline_id, e);
-                    }
+                    // FIXME: missing IpcSender
+                    // let event = CompositorEvent::KeyEvent(None, key, state, mods);
+                    // let control_msg = ConstellationControlMsg::SendEvent(pipeline_id, event);
+                    // if let Err(e) = script_channel.send(control_msg) {
+                    //     return self.handle_send_error(pipeline_id, e);
+                    // }
                 }
             },
             WebDriverCommandMsg::TakeScreenshot(pipeline_id, reply) => {

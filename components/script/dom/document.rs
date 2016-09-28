@@ -1128,7 +1128,8 @@ impl Document {
                               key: Key,
                               state: KeyState,
                               modifiers: KeyModifiers,
-                              constellation: &IpcSender<ConstellationMsg>) {
+                              resp_chan: IpcSender<bool>) {
+        println!("document::dispatch_key_event");
         let focused = self.get_focused_element();
         let body = self.GetBody();
 
@@ -1204,9 +1205,8 @@ impl Document {
             // TODO: if keypress event is canceled, prevent firing input events
         }
 
-        if !prevented {
-            constellation.send(ConstellationMsg::SendKeyEvent(ch, key, state, modifiers)).unwrap();
-        }
+        println!("document::dispatch_key_event sending back to resp_chan prevented={:?}", prevented);
+        resp_chan.send(prevented);
 
         // This behavior is unspecced
         // We are supposed to dispatch synthetic click activation for Space and/or Return,

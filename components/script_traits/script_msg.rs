@@ -121,14 +121,14 @@ pub enum ScriptMsg {
     /// Set title of current page
     /// https://html.spec.whatwg.org/multipage/#document.title
     SetTitle(PipelineId, Option<String>),
-    /// Send a key event
-    SendKeyEvent(Option<char>, Key, KeyState, KeyModifiers),
     /// Get Window Informations size and position
     GetClientWindow(IpcSender<(Size2D<u32>, Point2D<i32>)>),
     /// Move the window to a point
     MoveTo(Point2D<i32>),
     /// Resize the window to size
     ResizeTo(Size2D<u32>),
+    /// FIXME
+    SendKeyEventToFocusedPipeline(Option<char>, Key, KeyState, KeyModifiers, IpcSender<bool>),
     /// Script has handled a touch event, and either prevented or allowed default actions.
     TouchEventProcessed(EventResult),
     /// Get Scroll Offset

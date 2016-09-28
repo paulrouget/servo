@@ -18,7 +18,7 @@ use dom::bindings::codegen::Bindings::HTMLIFrameElementBinding::HTMLIFrameElemen
 use dom::bindings::codegen::Bindings::WindowBinding::WindowMethods;
 use dom::bindings::conversions::ToJSValConvertible;
 use dom::bindings::error::{Error, ErrorResult, Fallible};
-use dom::bindings::global::GlobalRef;
+use dom::bindings::global::{GlobalRef, GlobalRoot};
 use dom::bindings::inheritance::Castable;
 use dom::bindings::js::{JS, LayoutJS, MutNullableHeap, Root};
 use dom::bindings::reflector::Reflectable;
@@ -50,6 +50,9 @@ use style::context::ReflowGoal;
 use url::Url;
 use util::prefs::PREFS;
 use util::servo_version;
+
+use msg::constellation_msg::{Key, KeyModifiers, KeyState};
+use dom::bindings::codegen::Bindings::EventBinding::EventBinding::EventMethods;
 
 bitflags! {
     #[derive(JSTraceable, HeapSizeOf)]
@@ -560,6 +563,38 @@ impl HTMLIFrameElementMethods for HTMLIFrameElement {
 impl VirtualMethods for HTMLIFrameElement {
     fn super_type(&self) -> Option<&VirtualMethods> {
         Some(self.upcast::<HTMLElement>() as &VirtualMethods)
+    }
+
+    fn handle_event(&self, event: &Event) {
+        println!("iframe::handle_event");
+        self.super_type().unwrap().handle_event(event);
+
+        // FIXME: doesn't work with keypress
+        // let is_event_key = event.type_() == (atom!("keydown") | atom!("keyup") | atom!("keypress"));
+        let is_event_key = event.type_() == atom!("keydown");
+
+        let resend_event = if let GlobalRoot::Window(win) = self.global() {
+            let is_root_pipeline = win.parent_info().is_none();
+            is_root_pipeline && PREFS.is_mozbrowser_enabled() && is_event_key
+        } else {
+            false
+        };
+
+        if resend_event {
+            println!("iframe::handle_event resending event…");
+            let (sender, receiver) = ipc::channel().unwrap();
+            let msg = ConstellationMsg::SendKeyEventToFocusedPipeline(
+                Some('a'), Key::A, KeyState::Pressed, 
+                KeyModifiers::empty(),
+                sender);
+            let window = window_from_node(self);
+            window.constellation_chan().send(msg).unwrap();
+            let prevented = receiver.recv().unwrap();
+            println!("iframe::handle_event received with prevented={:?}", prevented);
+            if prevented {
+                event.PreventDefault();
+            }
+        }
     }
 
     fn attribute_mutated(&self, attr: &Attr, mutation: AttributeMutation) {
