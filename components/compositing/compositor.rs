@@ -34,7 +34,7 @@ use msg::constellation_msg::{PipelineIndex, PipelineNamespaceId, WindowSizeType}
 use profile_traits::mem::{self, ReportKind, Reporter, ReporterRequest};
 use profile_traits::time::{self, ProfilerCategory, profile};
 use script_traits::{AnimationState, AnimationTickType, ConstellationControlMsg};
-use script_traits::{ConstellationMsg, LayoutControlMsg, MouseButton, MouseEventType};
+use script_traits::{ConstellationMsg, LayoutControlMsg, MouseButton, MouseEventType, OverscrollEventPhase};
 use script_traits::{StackingContextScrollState, TouchpadPressurePhase, TouchEventType};
 use script_traits::{TouchId, WindowSizeData};
 use script_traits::CompositorEvent::{MouseMoveEvent, MouseButtonEvent, TouchEvent};
@@ -405,8 +405,13 @@ impl webrender_traits::RenderNotifier for RenderNotifier {
         self.compositor_proxy.recomposite(CompositingReason::NewWebRenderFrame);
     }
 
-    fn new_scroll_frame_ready(&mut self, composite_needed: bool) {
-        self.compositor_proxy.send(Msg::NewScrollFrameReady(composite_needed));
+    fn new_scroll_frame_ready(&mut self, composite_needed: bool, delta: Point2D<f32>, phase: ScrollEventPhase) {
+        let overscroll_phase = match(phase) {
+            ScrollEventPhase::Start => OverscrollEventPhase::Start,
+            ScrollEventPhase::Move(m) => OverscrollEventPhase::Move(m), // FIXME: "m" is not good
+            ScrollEventPhase::End => OverscrollEventPhase::End,
+        };
+        self.compositor_proxy.send(Msg::NewScrollFrameReady(composite_needed, delta, overscroll_phase));
     }
 
     fn pipeline_size_changed(&mut self,
@@ -797,11 +802,16 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 }
             }
 
-            (Msg::NewScrollFrameReady(recomposite_needed), ShutdownState::NotShuttingDown) => {
+            (Msg::NewScrollFrameReady(recomposite_needed, delta, phase), ShutdownState::NotShuttingDown) => {
                 self.waiting_for_results_of_scroll = false;
                 if recomposite_needed {
                     self.composition_request = CompositionRequest::CompositeNow(
                         CompositingReason::NewWebRenderScrollFrame);
+                } else {
+                    let msg = ConstellationMsg::Overscroll(delta, phase);
+                    if let Err(e) = self.constellation_chan.send(msg) {
+                        warn!("Sending overscroll to constellation failed ({}).", e);
+                    }
                 }
             }
 

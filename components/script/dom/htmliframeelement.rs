@@ -10,6 +10,7 @@ use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementIconC
 use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementLocationChangeEventDetail;
 use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementOpenTabEventDetail;
 use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementOpenWindowEventDetail;
+use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementOverscrollEventDetail;
 use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementSecurityChangeDetail;
 use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserElementVisibilityChangeEventDetail;
 use dom::bindings::codegen::Bindings::BrowserElementBinding::BrowserShowModalPromptEventDetail;
@@ -21,6 +22,7 @@ use dom::bindings::error::{Error, ErrorResult, Fallible};
 use dom::bindings::global::GlobalRef;
 use dom::bindings::inheritance::Castable;
 use dom::bindings::js::{JS, LayoutJS, MutNullableHeap, Root};
+use dom::bindings::num::Finite;
 use dom::bindings::reflector::Reflectable;
 use dom::bindings::str::DOMString;
 use dom::browsingcontext::BrowsingContext;
@@ -41,7 +43,7 @@ use js::jsval::{NullValue, UndefinedValue};
 use msg::constellation_msg::{FrameType, LoadData, PipelineId, TraversalDirection};
 use net_traits::response::HttpsState;
 use script_layout_interface::message::ReflowQueryType;
-use script_traits::{IFrameLoadInfo, MozBrowserEvent, ScriptMsg as ConstellationMsg};
+use script_traits::{IFrameLoadInfo, MozBrowserEvent, OverscrollEventPhase, ScriptMsg as ConstellationMsg};
 use script_traits::IFrameSandboxState::{IFrameSandboxed, IFrameUnsandboxed};
 use std::cell::Cell;
 use string_cache::Atom;
@@ -340,6 +342,23 @@ unsafe fn build_mozbrowser_event_detail(event: MozBrowserEvent,
                 description: Some(DOMString::from(description)),
                 report: Some(DOMString::from(report)),
                 version: Some(DOMString::from_string(servo_version())),
+            }.to_jsval(cx, rval);
+        },
+        MozBrowserEvent::Overscroll(delta, phase) => {
+            let mut fling = false;
+            let phase = DOMString::from(match phase {
+                OverscrollEventPhase::Start => "start",
+                OverscrollEventPhase::Move(not_fling) => {
+                    fling = !not_fling;
+                    "move"
+                },
+                OverscrollEventPhase::End => "end",
+            }.to_owned());
+            BrowserElementOverscrollEventDetail {
+                deltaX: Some(Finite::wrap(delta.x)),
+                deltaY: Some(Finite::wrap(delta.y)),
+                fling: Some(fling),
+                phase: Some(phase),
             }.to_jsval(cx, rval);
         },
         MozBrowserEvent::SecurityChange(https_state) => {

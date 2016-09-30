@@ -97,6 +97,13 @@ dictionary BrowserElementOpenWindowEventDetail {
   // Element frameElement;
 };
 
+dictionary BrowserElementOverscrollEventDetail {
+  float deltaX;
+  float deltaY;
+  DOMString phase; // start, move, end
+  boolean fling;
+};
+
 dictionary BrowserElementVisibilityChangeEventDetail {
   boolean visible;
 };

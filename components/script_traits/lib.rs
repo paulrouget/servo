@@ -464,6 +464,19 @@ pub struct IFrameLoadInfo {
     pub replace: bool,
 }
 
+
+/// Maps Webrender's ScrollEventPhase
+#[derive(Deserialize, Serialize)]
+pub enum OverscrollEventPhase {
+    /// The user started scrolling.
+    Start,
+    /// The user performed a scroll. The Boolean flag indicates whether the user's fingers are
+    /// down, if a touchpad is in use. (If false, the event is a touchpad fling.)
+    Move(bool),
+    /// The user ended scrolling.
+    End,
+}
+
 // https://developer.mozilla.org/en-US/docs/Web/API/Using_the_Browser_API#Events
 /// The events fired in a Browser API context (`<iframe mozbrowser>`)
 #[derive(Deserialize, Serialize)]
@@ -507,6 +520,8 @@ pub enum MozBrowserEvent {
     OpenSearch,
     /// Sent when visibility state changes.
     VisibilityChange(bool),
+    /// Overscroll
+    Overscroll(Point2D<f32>, OverscrollEventPhase),
 }
 
 impl MozBrowserEvent {
@@ -530,6 +545,7 @@ impl MozBrowserEvent {
             MozBrowserEvent::UsernameAndPasswordRequired => "mozbrowserusernameandpasswordrequired",
             MozBrowserEvent::OpenSearch => "mozbrowseropensearch",
             MozBrowserEvent::VisibilityChange(_) => "mozbrowservisibilitychange",
+            MozBrowserEvent::Overscroll(_, _) => "mozbrowseroverscroll",
         }
     }
 }
@@ -634,6 +650,8 @@ pub enum ConstellationMsg {
     TraverseHistory(Option<PipelineId>, TraversalDirection),
     /// Inform the constellation of a window being resized.
     WindowSize(WindowSizeData, WindowSizeType),
+    /// FIXME
+    Overscroll(Point2D<f32>, OverscrollEventPhase),
     /// Requests that the constellation instruct layout to begin a new tick of the animation.
     TickAnimation(PipelineId, AnimationTickType),
     /// Dispatch a webdriver command
