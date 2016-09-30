@@ -98,6 +98,8 @@ pub enum ScriptMsg {
     NewFavicon(Url),
     /// Status message to be displayed in the chrome, eg. a link URL on mouseover.
     NodeStatus(Option<String>),
+    /// Set overscroll options. Top, right, bottom, left.
+    SetOverscrollOptions(PipelineId, bool, bool, bool, bool),
     /// Notification that this iframe should be removed.
     RemoveIFrame(PipelineId, Option<IpcSender<()>>),
     /// Change pipeline visibility

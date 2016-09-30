@@ -925,6 +925,11 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
                     }
                 }
             }
+            FromScriptMsg::SetOverscrollOptions(pipeline_id, top, right, bottom, left) => {
+                debug!("constellation got set overscroll options message");
+                let msg = ToCompositorMsg::SetOverscrollOptions(pipeline_id, top, right, bottom, left);
+                self.compositor_proxy.send(msg);
+            }
             FromScriptMsg::NewFavicon(url) => {
                 debug!("constellation got new favicon message");
                 self.compositor_proxy.send(ToCompositorMsg::NewFavicon(url));

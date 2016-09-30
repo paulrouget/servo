@@ -166,6 +166,8 @@ pub enum Msg {
     IsReadyToSaveImageReply(bool),
     /// A favicon was detected
     NewFavicon(Url),
+    /// Set overscroll options. Top, right, bottom, left.
+    SetOverscrollOptions(PipelineId, bool, bool, bool, bool),
     /// <head> tag finished parsing
     HeadParsed,
     /// Signal that the paint thread ignored the paint requests that carried
@@ -221,6 +223,7 @@ impl Debug for Msg {
             Msg::ViewportConstrained(..) => write!(f, "ViewportConstrained"),
             Msg::IsReadyToSaveImageReply(..) => write!(f, "IsReadyToSaveImageReply"),
             Msg::NewFavicon(..) => write!(f, "NewFavicon"),
+            Msg::SetOverscrollOptions(..) => write!(f, "SetOverscrollOptions"),
             Msg::HeadParsed => write!(f, "HeadParsed"),
             Msg::ReturnUnusedNativeSurfaces(..) => write!(f, "ReturnUnusedNativeSurfaces"),
             Msg::CollectMemoryReports(..) => write!(f, "CollectMemoryReports"),

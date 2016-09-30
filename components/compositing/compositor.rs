@@ -54,7 +54,7 @@ use util::geometry::ScreenPx;
 use util::opts;
 use util::prefs::PREFS;
 use webrender;
-use webrender_traits::{self, ScrollEventPhase};
+use webrender_traits::{self, OverscrollOptions, ScrollEventPhase};
 use windowing::{self, MouseWindowEvent, WindowEvent, WindowMethods, WindowNavigateMsg};
 
 #[derive(Debug, PartialEq)]
@@ -749,6 +749,17 @@ impl<Window: WindowMethods> IOCompositor<Window> {
 
             (Msg::NewFavicon(url), ShutdownState::NotShuttingDown) => {
                 self.window.set_favicon(url);
+            }
+
+            (Msg::SetOverscrollOptions(id,t,r,b,l), ShutdownState::NotShuttingDown) => {
+                if let Some(ref webrender_api) = self.webrender_api {
+                    webrender_api.set_overscroll_options(id, OverscrollOptions {
+                        top: t,
+                        right: r,
+                        bottom: b,
+                        left: l,
+                    });
+                }
             }
 
             (Msg::HeadParsed, ShutdownState::NotShuttingDown) => {

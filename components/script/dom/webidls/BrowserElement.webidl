@@ -119,6 +119,10 @@ interface BrowserElementCommon {
    Pref="dom.mozbrowser.enabled"]
   boolean getVisible();
 
+  [Throws,
+  Pref="dom.mozbrowser.enabled"]
+  void setOverscrollOptions(boolean top, boolean right, boolean bottom, boolean left);
+
   //[Throws,
   // Pref="dom.mozBrowserFramesEnabled"]
   //void setActive(boolean active);

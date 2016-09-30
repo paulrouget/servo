@@ -533,6 +533,20 @@ impl HTMLIFrameElementMethods for HTMLIFrameElement {
         }
     }
 
+    fn SetOverscrollOptions(&self, top: bool, right: bool, bottom: bool, left: bool) -> ErrorResult {
+        if self.Mozbrowser() {
+            if let Some(pipeline_id) = self.pipeline_id.get() {
+                let window = window_from_node(self);
+                let msg = ConstellationMsg::SetOverscrollOptions(pipeline_id, top, right, bottom, left);
+                window.constellation_chan().send(msg).unwrap();
+            }
+            Ok(())
+        } else {
+            debug!("this frame is not mozbrowser: mozbrowser attribute missing, or not a top
+                level window, or mozbrowser preference not set (use --pref dom.mozbrowser.enabled)");
+            Err(Error::NotSupported)
+        }
+    }
 
     // https://developer.mozilla.org/en-US/docs/Web/API/HTMLIFrameElement/stop
     fn Stop(&self) -> ErrorResult {
