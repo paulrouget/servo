@@ -690,6 +690,60 @@ impl Document {
         }
     }
 
+    pub fn handle_overscroll_event(&self,
+                                   js_runtime: *mut JSRuntime,
+                                   point: Point2D<f32>,
+                                   delta: Point2D<f32>,
+                                   phase: ScrollEventPhase) {
+
+        // FIXME: depending on https://github.com/browserhtml/browserhtml/issues/1258,
+        // use a mozbrowser event (see handle_mouse_event) or a DOM event.
+
+        let node = match self.window.hit_test_query(point, false) {
+            Some(node_address) => {
+                debug!("node address is {:?}", node_address);
+                node::from_untrusted_node_address(js_runtime, node_address)
+            },
+            None => return,
+        };
+
+        let el = match node.downcast::<Element>() {
+            Some(el) => Root::from_ref(el),
+            None => {
+                let parent = node.GetParentNode();
+                match parent.and_then(Root::downcast::<Element>) {
+                    Some(parent) => parent,
+                    None => return,
+                }
+            },
+        };
+
+        let node = el.upcast::<Node>();
+        let client_x = client_point.x as i32;
+        let client_y = client_point.y as i32;
+        let click_count = 1;
+        let event = MouseEvent::new(&self.window,
+                                    DOMString::from("overscroll".to_owned),
+                                    EventBubbles::Bubbles,
+                                    EventCancelable::Cancelable,
+                                    Some(&self.window),
+                                    click_count,
+                                    client_x,
+                                    client_y,
+                                    client_x,
+                                    client_y, // TODO: Get real screen coordinates?
+                                    false,
+                                    false,
+                                    false,
+                                    false,
+                                    0i16,
+                                    None);
+        let event = event.upcast::<Event>();
+        event.set_trusted(true);
+        let target = node.upcast();
+        event.fire(target);
+    }
+
     pub fn handle_mouse_event(&self,
                               js_runtime: *mut JSRuntime,
                               button: MouseButton,

@@ -24,7 +24,7 @@ use msg::constellation_msg::{PipelineIndex, PipelineNamespaceId, WindowSizeType}
 use profile_traits::mem::{self, Reporter, ReporterRequest};
 use profile_traits::time::{self, ProfilerCategory, profile};
 use script_traits::{AnimationState, AnimationTickType, ConstellationControlMsg};
-use script_traits::{ConstellationMsg, LayoutControlMsg, MouseButton, MouseEventType};
+use script_traits::{ConstellationMsg, LayoutControlMsg, MouseButton, MouseEventType, OverscrollEventPhase};
 use script_traits::{StackingContextScrollState, TouchpadPressurePhase, TouchEventType};
 use script_traits::{TouchId, WindowSizeData};
 use script_traits::CompositorEvent::{self, MouseMoveEvent, MouseButtonEvent, TouchEvent, TouchpadPressureEvent};
@@ -336,8 +336,13 @@ impl webrender_traits::RenderNotifier for RenderNotifier {
         self.compositor_proxy.recomposite(CompositingReason::NewWebRenderFrame);
     }
 
-    fn new_scroll_frame_ready(&mut self, composite_needed: bool) {
-        self.compositor_proxy.send(Msg::NewScrollFrameReady(composite_needed));
+    fn new_scroll_frame_ready(&mut self, composite_needed: bool, delta: Point2D<f32>, cursor: Point2D<f32>, phase: ScrollEventPhase) {
+        let overscroll_phase = match(phase) {
+            ScrollEventPhase::Start => OverscrollEventPhase::Start,
+            ScrollEventPhase::Move(m) => OverscrollEventPhase::Move(m), // FIXME: "m" is not good
+            ScrollEventPhase::End => OverscrollEventPhase::End,
+        };
+        self.compositor_proxy.send(Msg::NewScrollFrameReady(composite_needed, delta, cursor, overscroll_phase));
     }
 
     fn pipeline_size_changed(&mut self,
@@ -631,11 +636,25 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 let _ = sender.send(());
             }
 
-            (Msg::NewScrollFrameReady(recomposite_needed), ShutdownState::NotShuttingDown) => {
+            (Msg::NewScrollFrameReady(recomposite_needed, cursor, delta, phase), ShutdownState::NotShuttingDown) => {
                 self.waiting_for_results_of_scroll = false;
                 if recomposite_needed {
                     self.composition_request = CompositionRequest::CompositeNow(
                         CompositingReason::NewWebRenderScrollFrame);
+                } else {
+                    let root_pipeline_id = match self.get_root_pipeline_id() {
+                        Some(root_pipeline_id) => root_pipeline_id,
+                        None => return,
+                    };
+                    if let Some(pipeline) = self.pipeline(root_pipeline_id) {
+                        println!("sending overscroll event from root pipeline");
+                        let dppx = self.page_zoom * self.device_pixels_per_screen_px();
+                        let translated_cursor = (cursor / dppx).to_untyped();
+                        let translated_delta = (delta / dppx).to_untyped();
+                        let event = OverscrollEvent(translated_cursor, translated_delta, phase);
+                        let msg = ConstellationControlMsg::SendEvent(root_pipeline_id, event);
+                        pipeline.script_chan.send(msg).expect("Error");
+                    }
                 }
             }
 
@@ -928,6 +947,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
         };
 
         if let Some(pipeline) = self.pipeline(root_pipeline_id) {
+            println!("Sending mouse event to: {:?}", root_pipeline_id);
             let dppx = self.page_zoom * self.device_pixels_per_screen_px();
             let translated_point = (point / dppx).to_untyped();
             let event_to_send = match mouse_window_event {

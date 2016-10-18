@@ -13,7 +13,7 @@ use ipc_channel::ipc::IpcSender;
 use msg::constellation_msg::{Image, Key, KeyModifiers, KeyState, PipelineId};
 use profile_traits::mem;
 use profile_traits::time;
-use script_traits::{AnimationState, ConstellationMsg, EventResult};
+use script_traits::{AnimationState, ConstellationMsg, EventResult, OverscrollEventPhase};
 use std::fmt::{Debug, Error, Formatter};
 use std::sync::mpsc::{Receiver, Sender};
 use style_traits::cursor::Cursor;
@@ -119,7 +119,7 @@ pub enum Msg {
     PipelineVisibilityChanged(PipelineId, bool),
     /// WebRender has successfully processed a scroll. The boolean specifies whether a composite is
     /// needed.
-    NewScrollFrameReady(bool),
+    NewScrollFrameReady(bool, Point2D<f32>, Point2D<f32>, OverscrollEventPhase),
     /// A pipeline was shut down.
     // This message acts as a synchronization point between the constellation,
     // when it shuts down a pipeline, to the compositor; when the compositor

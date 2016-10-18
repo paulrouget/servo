@@ -37,3 +37,7 @@ features = ["serde_derive"]
 git = "https://github.com/servo/webrender"
 default_features = false
 features = ["serde_derive"]
+
+[replace]
+"webrender:0.6.0" = { path = '/Users/Paul/git/webrender/webrender/' }
+"webrender_traits:0.6.0" = { path = '/Users/Paul/git/webrender/webrender_traits' }
