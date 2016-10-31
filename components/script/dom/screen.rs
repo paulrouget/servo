@@ -28,6 +28,22 @@ impl Screen {
 }
 
 impl ScreenMethods for Screen {
+    fn AvailWidth(&self) -> i32 {
+        0
+    }
+
+    fn AvailHeight(&self) -> i32 {
+        0
+    }
+
+    fn Width(&self) -> i32 {
+        0
+    }
+
+    fn Height(&self) -> i32 {
+        0
+    }
+
     // https://drafts.csswg.org/cssom-view/#dom-screen-colordepth
     fn ColorDepth(&self) -> u32 {
         24

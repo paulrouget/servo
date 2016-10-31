@@ -177,6 +177,8 @@ enum WindowKind {
 pub struct Window {
     kind: WindowKind,
 
+    screen_size: TypedSize2D<u32, DevicePixel>,
+
     mouse_down_button: Cell<Option<glutin::MouseButton>>,
     mouse_down_point: Cell<Point2D<i32>>,
     event_queue: RefCell<Vec<WindowEvent>>,
@@ -268,8 +270,11 @@ impl Window {
             println!("{}", gl::get_string(gl::VERSION));
         }
 
+        let (screen_width, screen_height) = glutin::get_primary_monitor().get_dimensions();
+
         let window = Window {
             kind: window_kind,
+            screen_size: TypedSize2D::new(screen_width, screen_height),
             event_queue: RefCell::new(vec!()),
             mouse_down_button: Cell::new(None),
             mouse_down_point: Cell::new(Point2D::new(0, 0)),
@@ -776,6 +781,13 @@ impl WindowMethods for Window {
                 TypedSize2D::new(context.width, context.height)
             }
         }
+    }
+
+    fn screen_size(&self) -> TypedSize2D<u32, DevicePixel> {
+        // TODO(paul): pick the right monitor
+        let monitor = glutin::get_primary_monitor();
+        let (w,h) = monitor.get_dimensions();
+        TypedSize2D::new(w,h)
     }
 
     fn size(&self) -> TypedSize2D<f32, ScreenPx> {

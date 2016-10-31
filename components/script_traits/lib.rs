@@ -618,6 +618,9 @@ pub struct WindowSizeData {
 
     /// The resolution of the window in dppx, not including any "pinch zoom" factor.
     pub device_pixel_ratio: ScaleFactor<f32, ViewportPx, DevicePixel>,
+
+    /// Screen size
+    pub screen_size: TypedSize2D<f32, ViewportPx>,
 }
 
 /// The type of window size change.

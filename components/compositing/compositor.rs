@@ -129,6 +129,9 @@ pub struct IOCompositor<Window: WindowMethods> {
     /// The application window size.
     window_size: TypedSize2D<u32, DevicePixel>,
 
+    /// The screen size
+    screen_size: TypedSize2D<u32, DevicePixel>,
+
     /// The overridden viewport.
     viewport: Option<(TypedPoint2D<u32, DevicePixel>, TypedSize2D<u32, DevicePixel>)>,
 
@@ -386,6 +389,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             mem::ProfilerMsg::RegisterReporter(reporter_name(), reporter));
 
         let window_size = window.framebuffer_size();
+        let screen_size = window.screen_size();
         let scale_factor = window.scale_factor();
         let composite_target = match opts::get().output_file {
             Some(_) => CompositeTarget::PngFile,
@@ -398,6 +402,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             root_pipeline: None,
             pipeline_details: HashMap::new(),
             window_size: window_size,
+            screen_size: screen_size,
             scale: ScaleFactor::new(1.0),
             viewport: None,
             scale_factor: scale_factor,
@@ -771,10 +776,12 @@ impl<Window: WindowMethods> IOCompositor<Window> {
         let dppx = self.page_zoom * self.device_pixels_per_screen_px();
         let initial_viewport = self.window_size.to_f32() / dppx;
         let visible_viewport = initial_viewport / self.viewport_zoom;
+        let screen_size = self.screen_size.to_f32() / dppx;
         let msg = ConstellationMsg::WindowSize(WindowSizeData {
             device_pixel_ratio: dppx,
             initial_viewport: initial_viewport,
             visible_viewport: visible_viewport,
+            screen_size: screen_size,
         }, size_type);
 
         if let Err(e) = self.constellation_chan.send(msg) {

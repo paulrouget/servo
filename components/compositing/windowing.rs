@@ -108,6 +108,8 @@ impl Debug for WindowEvent {
 pub trait WindowMethods {
     /// Returns the size of the window in hardware pixels.
     fn framebuffer_size(&self) -> TypedSize2D<u32, DevicePixel>;
+    /// Screens size
+    fn screen_size(&self) -> TypedSize2D<u32, DevicePixel>;
     /// Returns the size of the window in density-independent "px" units.
     fn size(&self) -> TypedSize2D<f32, ScreenPx>;
     /// Presents the window to the screen (perhaps by page flipping).

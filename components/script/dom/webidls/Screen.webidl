@@ -5,10 +5,10 @@
 // http://dev.w3.org/csswg/cssom-view/#the-screen-interface
 [Exposed=(Window,Worker)]
 interface Screen {
-  //readonly attribute double availWidth;
-  //readonly attribute double availHeight;
-  //readonly attribute double width;
-  //readonly attribute double height;
+  readonly attribute long availWidth;
+  readonly attribute long availHeight;
+  readonly attribute long width;
+  readonly attribute long height;
   readonly attribute unsigned long colorDepth;
   readonly attribute unsigned long pixelDepth;
 };
