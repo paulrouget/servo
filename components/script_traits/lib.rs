@@ -383,6 +383,8 @@ pub enum CompositorEvent {
     TouchpadPressureEvent(Point2D<f32>, f32, TouchpadPressurePhase),
     /// A key was pressed.
     KeyEvent(Option<char>, Key, KeyState, KeyModifiers),
+    /// A key was pressed.
+    OverscrollEvent(Point2D<f32>, Point2D<f32>, OverscrollEventPhase),
 }
 
 /// Touchpad pressure phase for `TouchpadPressureEvent`.
@@ -535,6 +537,18 @@ pub struct IFrameLoadInfoWithData {
     pub sandbox: IFrameSandboxState,
 }
 
+/// Maps Webrender's ScrollEventPhase
+#[derive(Deserialize, Serialize)]
+pub enum OverscrollEventPhase {
+    /// The user started scrolling.
+    Start,
+    /// The user performed a scroll. The Boolean flag indicates whether the user's fingers are
+    /// down, if a touchpad is in use. (If false, the event is a touchpad fling.)
+    Move(bool),
+    /// The user ended scrolling.
+    End,
+}
+
 // https://developer.mozilla.org/en-US/docs/Web/API/Using_the_Browser_API#Events
 /// The events fired in a Browser API context (`<iframe mozbrowser>`)
 #[derive(Deserialize, Serialize)]
@@ -578,6 +592,8 @@ pub enum MozBrowserEvent {
     OpenSearch,
     /// Sent when visibility state changes.
     VisibilityChange(bool),
+    /// Overscroll
+    Overscroll(Point2D<f32>, OverscrollEventPhase),
 }
 
 impl MozBrowserEvent {
@@ -601,6 +617,7 @@ impl MozBrowserEvent {
             MozBrowserEvent::UsernameAndPasswordRequired => "mozbrowserusernameandpasswordrequired",
             MozBrowserEvent::OpenSearch => "mozbrowseropensearch",
             MozBrowserEvent::VisibilityChange(_) => "mozbrowservisibilitychange",
+            MozBrowserEvent::Overscroll(_, _) => "mozbrowseroverscroll",
         }
     }
 }

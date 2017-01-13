@@ -1935,6 +1935,10 @@ impl ScriptThread {
                 self.handle_resize_event(pipeline_id, new_size, size_type);
             }
 
+            OverscrollEvent(point, delta, phase) => {
+                self.handle_overscroll_event(pipeline_id, point, delta, phase);
+            }
+
             MouseButtonEvent(event_type, button, point) => {
                 self.handle_mouse_event(pipeline_id, event_type, button, point);
             }
@@ -2028,6 +2032,19 @@ impl ScriptThread {
             }
         }
     }
+
+    fn handle_overscroll_event(&self,
+                               pipeline_id: PipelineId,
+                               point: Point2D<f32>,
+                               delta: Point2D<f32>,
+                               phase: ScrollEventPhase) {
+        let document = match self.root_browsing_context().find(pipeline_id) {
+            Some(browsing_context) => browsing_context.active_document(),
+            None => return warn!("Message sent to closed pipeline {}.", pipeline_id),
+        };
+        document.handle_overscroll_event(self.js_runtime.rt(), point, delta, phase);
+    }
+
 
     fn handle_mouse_event(&self,
                           pipeline_id: PipelineId,

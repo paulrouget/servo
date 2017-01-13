@@ -76,6 +76,7 @@ use euclid::scale_factor::ScaleFactor;
 use euclid::size::{Size2D, TypedSize2D};
 use event_loop::EventLoop;
 use frame::{Frame, FrameChange, FrameState, FrameTreeIterator, FullFrameTreeIterator};
+use euclid::Point2D;
 use gfx::font_cache_thread::FontCacheThread;
 use gfx_traits::Epoch;
 use ipc_channel::ipc::{self, IpcSender};
@@ -97,6 +98,11 @@ use script_traits::{AnimationState, AnimationTickType, CompositorEvent};
 use script_traits::{ConstellationControlMsg, ConstellationMsg as FromCompositorMsg, DiscardBrowsingContext};
 use script_traits::{DocumentState, LayoutControlMsg, LoadData};
 use script_traits::{IFrameLoadInfo, IFrameLoadInfoWithData, IFrameSandboxState, TimerEventRequest};
+=======
+use script_traits::{ConstellationControlMsg, ConstellationMsg as FromCompositorMsg};
+use script_traits::{DocumentState, LayoutControlMsg};
+use script_traits::{IFrameLoadInfo, IFrameSandboxState, OverscrollEventPhase, TimerEventRequest};
+>>>>>>> wip
 use script_traits::{LayoutMsg as FromLayoutMsg, ScriptMsg as FromScriptMsg, ScriptThreadFactory};
 use script_traits::{LogEntry, ServiceWorkerMsg, webdriver_msg};
 use script_traits::{MozBrowserErrorType, MozBrowserEvent, WebDriverCommandMsg, WindowSizeData};
