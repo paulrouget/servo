@@ -11,7 +11,7 @@ use euclid::rect::TypedRect;
 use euclid::scale_factor::ScaleFactor;
 use euclid::size::TypedSize2D;
 use gleam::gl;
-use msg::constellation_msg::{Key, KeyModifiers, KeyState};
+use msg::constellation_msg::{FrameId, Key, KeyModifiers, KeyState, NavigationReason};
 use net_traits::net_error_list::NetError;
 use script_traits::{DevicePixel, LoadData, MouseButton, TouchEventType, TouchId, TouchpadPressurePhase};
 use servo_geometry::DeviceIndependentPixel;
@@ -57,7 +57,7 @@ pub enum WindowEvent {
     /// Sent when you want to override the viewport.
     Viewport(TypedPoint2D<u32, DevicePixel>, TypedSize2D<u32, DevicePixel>),
     /// Sent when a new URL is to be loaded.
-    LoadUrl(String),
+    LoadUrl(FrameId, String),
     /// Sent when a mouse hit test is to be performed.
     MouseWindowEventClass(MouseWindowEvent),
     /// Sent when a mouse move.
@@ -80,7 +80,7 @@ pub enum WindowEvent {
     /// Sent when a key input state changes
     KeyEvent(Option<char>, Key, KeyState, KeyModifiers),
     /// Sent when Ctr+R/Apple+R is called to reload the current page.
-    Reload,
+    Reload(FrameId),
 }
 
 impl Debug for WindowEvent {
@@ -103,7 +103,7 @@ impl Debug for WindowEvent {
             WindowEvent::ResetZoom => write!(f, "ResetZoom"),
             WindowEvent::Navigation(..) => write!(f, "Navigation"),
             WindowEvent::Quit => write!(f, "Quit"),
-            WindowEvent::Reload => write!(f, "Reload"),
+            WindowEvent::Reload(_) => write!(f, "Reload"),
         }
     }
 }
@@ -138,11 +138,11 @@ pub trait WindowMethods {
     /// Called when the browser encounters an error while loading a URL
     fn load_error(&self, code: NetError, url: String);
     /// Wether or not to follow a link
-    fn allow_navigation(&self, url: ServoUrl) -> bool;
+    fn allow_navigation(&self, frame_id: FrameId, url: ServoUrl, reason: NavigationReason) -> bool;
     /// Called when the <head> tag has finished parsing
     fn head_parsed(&self);
     /// Called when the history state has changed.
-    fn history_changed(&self, Vec<LoadData>, usize);
+    fn history_changed(&self, frame_id: FrameId, Vec<LoadData>, usize);
 
     /// Returns the scale factor of the system (device pixels / device independent pixels).
     fn hidpi_factor(&self) -> ScaleFactor<f32, DeviceIndependentPixel, DevicePixel>;

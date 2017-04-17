@@ -10,7 +10,7 @@ use euclid::point::Point2D;
 use euclid::size::Size2D;
 use gfx_traits::ScrollRootId;
 use ipc_channel::ipc::IpcSender;
-use msg::constellation_msg::{Key, KeyModifiers, KeyState, PipelineId};
+use msg::constellation_msg::{FrameId, Key, KeyModifiers, KeyState, NavigationReason, PipelineId};
 use net_traits::image::base::Image;
 use profile_traits::mem;
 use profile_traits::time;
@@ -84,10 +84,12 @@ pub enum Msg {
     LoadStart,
     /// The load of a page has completed
     LoadComplete,
+    // PAUL: adding FrameId to HistoryChanged and AllowNavigation messages. We will need to do that
+    // to all browser-specific messages
     /// The history state has changed.
-    HistoryChanged(Vec<LoadData>, usize),
+    HistoryChanged(FrameId, Vec<LoadData>, usize),
     /// Wether or not to follow a link
-    AllowNavigation(ServoUrl, IpcSender<bool>),
+    AllowNavigation(FrameId, ServoUrl, NavigationReason, IpcSender<bool>),
     /// We hit the delayed composition timeout. (See `delayed_composition.rs`.)
     DelayedCompositionTimeout(u64),
     /// Composite.

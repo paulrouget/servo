@@ -40,6 +40,7 @@ browserhtml = {git = "https://github.com/browserhtml/browserhtml", branch = "cra
 glutin_app = {path = "../../ports/glutin"}
 log = "0.3"
 libservo = {path = "../../components/servo"}
+tinyfiledialogs = "2.5.9"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 sig = "0.1"

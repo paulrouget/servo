@@ -22,7 +22,7 @@ use glutin::ScanCode;
 use glutin::TouchPhase;
 #[cfg(target_os = "macos")]
 use glutin::os::macos::{ActivationPolicy, WindowBuilderExt};
-use msg::constellation_msg::{self, Key};
+use msg::constellation_msg::{self, FrameId, Key, NavigationReason};
 use msg::constellation_msg::{ALT, CONTROL, KeyState, NONE, SHIFT, SUPER};
 use net_traits::net_error_list::NetError;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -176,6 +176,12 @@ enum WindowKind {
     Headless(HeadlessContext),
 }
 
+// PAUL: events sent by servo. Comes with a FrameId then we know which browser fired this event
+pub enum BrowserEvent {
+    SetUrl(FrameId, ServoUrl),
+    HandleUrl(FrameId, ServoUrl),
+}
+
 /// The type of a window.
 pub struct Window {
     kind: WindowKind,
@@ -183,6 +189,10 @@ pub struct Window {
     mouse_down_button: Cell<Option<glutin::MouseButton>>,
     mouse_down_point: Cell<Point2D<i32>>,
     event_queue: RefCell<Vec<WindowEvent>>,
+
+    // A dedicated event queue for servo events. We could re-use event_queue but
+    // it makes things a bit messy. And I'm lazy.
+    servo_event_queue: RefCell<Vec<BrowserEvent>>,
 
     mouse_pos: Cell<Point2D<i32>>,
     key_modifiers: Cell<KeyModifiers>,
@@ -306,6 +316,7 @@ impl Window {
         let window = Window {
             kind: window_kind,
             event_queue: RefCell::new(vec!()),
+            servo_event_queue: RefCell::new(vec!()),
             mouse_down_button: Cell::new(None),
             mouse_down_point: Cell::new(Point2D::new(0, 0)),
 
@@ -679,6 +690,12 @@ impl Window {
         events
     }
 
+    pub fn get_servo_events(&self) -> Vec<BrowserEvent> {
+        let mut events = self.servo_event_queue.borrow_mut();
+        let copy = events.drain(..).collect();
+        copy
+    }
+
     pub unsafe fn set_nested_event_loop_listener(
             &self,
             listener: *mut (NestedEventLoopListener + 'static)) {
@@ -1018,8 +1035,9 @@ impl WindowMethods for Window {
         }
     }
 
-    fn history_changed(&self, history: Vec<LoadData>, current: usize) {
-        *self.current_url.borrow_mut() = Some(history[current].url.clone());
+    fn history_changed(&self, frame_id: FrameId, history: Vec<LoadData>, current: usize) {
+        let url = history[current].url.clone();
+        self.servo_event_queue.borrow_mut().push(BrowserEvent::SetUrl(frame_id, url));
     }
 
     fn load_error(&self, _: NetError, _: String) {
@@ -1165,11 +1183,6 @@ impl WindowMethods for Window {
             (NONE, None, Key::Right) => {
                 self.scroll_window(ScrollLocation::Delta(TypedPoint2D::new(-LINE_HEIGHT, 0.0)), TouchEventType::Move);
             }
-            (CMD_OR_CONTROL, Some('r'), _) => {
-                if let Some(true) = PREFS.get("shell.builtin-key-shortcuts.enabled").as_boolean() {
-                    self.event_queue.borrow_mut().push(WindowEvent::Reload);
-                }
-            }
             (CMD_OR_CONTROL, Some('q'), _) => {
                 if let Some(true) = PREFS.get("shell.builtin-key-shortcuts.enabled").as_boolean() {
                     self.event_queue.borrow_mut().push(WindowEvent::Quit);
@@ -1182,8 +1195,15 @@ impl WindowMethods for Window {
         }
     }
 
-    fn allow_navigation(&self, _: ServoUrl) -> bool {
-        true
+    fn allow_navigation(&self, frame_id: FrameId, url: ServoUrl, reason: NavigationReason) -> bool {
+        // User Ctrl-clicked on a link
+        match (reason, self.key_modifiers.get().intersects(LEFT_SUPER | LEFT_CONTROL)) {
+            (NavigationReason::UserAction, true) => {
+                self.servo_event_queue.borrow_mut().push(BrowserEvent::HandleUrl(frame_id, url));
+                false
+            },
+            _ => true
+        }
     }
 
     fn supports_clipboard(&self) -> bool {

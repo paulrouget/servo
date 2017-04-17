@@ -16,7 +16,7 @@ use gfx_traits::{Epoch, ScrollRootId};
 use gleam::gl;
 use image::{DynamicImage, ImageFormat, RgbImage};
 use ipc_channel::ipc::{self, IpcSender, IpcSharedMemory};
-use msg::constellation_msg::{Key, KeyModifiers, KeyState, CONTROL};
+use msg::constellation_msg::{FrameId, Key, KeyModifiers, KeyState, CONTROL};
 use msg::constellation_msg::{PipelineId, PipelineIndex, PipelineNamespaceId, TraversalDirection};
 use net_traits::image::base::{Image, PixelFormat};
 use profile_traits::time::{self, ProfilerCategory, profile};
@@ -546,8 +546,9 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.window.load_end();
             }
 
-            (Msg::AllowNavigation(url, response_chan), ShutdownState::NotShuttingDown) => {
-                let allow = self.window.allow_navigation(url);
+            (Msg::AllowNavigation(frame_id, url, reason, response_chan), ShutdownState::NotShuttingDown) => {
+                // PAUL: add FrameId to AllowNavigation message
+                let allow = self.window.allow_navigation(frame_id, url, reason);
                 if let Err(e) = response_chan.send(allow) {
                     warn!("Failed to send allow_navigation result ({}).", e);
                 }
@@ -621,8 +622,9 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.window.head_parsed();
             }
 
-            (Msg::HistoryChanged(entries, current), ShutdownState::NotShuttingDown) => {
-                self.window.history_changed(entries, current);
+            (Msg::HistoryChanged(frame_id, entries, current), ShutdownState::NotShuttingDown) => {
+                // PAUL: add FrameId to HistoryChanged message
+                self.window.history_changed(frame_id, entries, current);
             }
 
             (Msg::PipelineVisibilityChanged(pipeline_id, visible), ShutdownState::NotShuttingDown) => {
@@ -817,8 +819,8 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.on_resize_window_event(size);
             }
 
-            WindowEvent::LoadUrl(url_string) => {
-                self.on_load_url_window_event(url_string);
+            WindowEvent::LoadUrl(frame_id, url_string) => {
+                self.on_load_url_window_event(frame_id, url_string);
             }
 
             WindowEvent::MouseWindowEventClass(mouse_window_event) => {
@@ -881,7 +883,8 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 }
             }
 
-            WindowEvent::Reload => {
+            WindowEvent::Reload(_frame_id) => {
+                // PAUL: we will need to direct this event to the right top level frame
                 let msg = ConstellationMsg::Reload;
                 if let Err(e) = self.constellation_chan.send(msg) {
                     warn!("Sending reload to constellation failed ({}).", e);
@@ -914,14 +917,15 @@ impl<Window: WindowMethods> IOCompositor<Window> {
         self.send_window_size(WindowSizeType::Resize);
     }
 
-    fn on_load_url_window_event(&mut self, url_string: String) {
+    fn on_load_url_window_event(&mut self, _frame_id: FrameId, url_string: String) {
+        // PAUL: we will call LoadUrl on the pipeline in frames.get(frame_id).pipeline
         debug!("osmain: loading URL `{}`", url_string);
         self.got_load_complete_message = false;
         match ServoUrl::parse(&url_string) {
             Ok(url) => {
                 let msg = match self.root_pipeline {
                     Some(ref pipeline) => ConstellationMsg::LoadUrl(pipeline.id, LoadData::new(url, None, None)),
-                    None => ConstellationMsg::InitLoadUrl(url)
+                    None => return warn!("FIXME")
                 };
                 if let Err(e) = self.constellation_chan.send(msg) {
                     warn!("Sending load url to constellation failed ({}).", e);

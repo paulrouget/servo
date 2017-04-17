@@ -306,3 +306,13 @@ pub enum FrameType {
     IFrame,
     MozBrowserIFrame,
 }
+
+// PAUL: This is just a naive change, just to experiment with Ctrl-click.
+// Let the embedder know why the page is navigating. Then the embedder
+// can check if the ctrl/cmd key was pressed at that moment, and then open
+// the link in a new tab.
+pub enum NavigationReason {
+    UserAction,
+    WebDriver,
+    Other,
+}

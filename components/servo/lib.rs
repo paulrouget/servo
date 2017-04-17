@@ -82,17 +82,17 @@ use gaol::sandbox::{ChildSandbox, ChildSandboxMethods};
 use gfx::font_cache_thread::FontCacheThread;
 use ipc_channel::ipc::{self, IpcSender};
 use log::{Log, LogMetadata, LogRecord};
+use msg::constellation_msg::FrameId;
 use net::resource_thread::new_resource_threads;
 use net_traits::IpcSend;
 use profile::mem as profile_mem;
 use profile::time as profile_time;
 use profile_traits::mem;
 use profile_traits::time;
-use script_traits::{ConstellationMsg, SWManagerSenders, ScriptMsg};
+use script_traits::{ConstellationMsg, LoadData, SWManagerSenders, ScriptMsg};
 use servo_config::opts;
 use servo_config::prefs::PREFS;
 use servo_config::resource_files::resources_dir_path;
-use servo_url::ServoUrl;
 use std::borrow::Cow;
 use std::cmp::max;
 use std::path::PathBuf;
@@ -103,7 +103,6 @@ use webvr::{WebVRThread, WebVRCompositorHandler};
 
 pub use gleam::gl;
 pub use servo_config as config;
-pub use servo_url as url;
 
 /// The in-process interface to Servo.
 ///
@@ -116,13 +115,16 @@ pub use servo_url as url;
 /// application Servo is embedded in. Clients then create an event
 /// loop to pump messages between the embedding application and
 /// various browser components.
-pub struct Browser<Window: WindowMethods + 'static> {
+// PAUL: moving from "Browser" to "BrowserManager", which is the same struct.
+// This holds a compositor and a constellation. Eventually, we will
+// also want multiple compositors, but that's for later.
+pub struct BrowserManager<Window: WindowMethods + 'static> {
     compositor: IOCompositor<Window>,
     constellation_chan: Sender<ConstellationMsg>,
 }
 
-impl<Window> Browser<Window> where Window: WindowMethods + 'static {
-    pub fn new(window: Rc<Window>) -> Browser<Window> {
+impl<Window> BrowserManager<Window> where Window: WindowMethods + 'static {
+    pub fn new(window: Rc<Window>) -> BrowserManager<Window> {
         // Global configuration options, parsed from the command line.
         let opts = opts::get();
 
@@ -198,9 +200,10 @@ impl<Window> Browser<Window> where Window: WindowMethods + 'static {
         // Create the constellation, which maintains the engine
         // pipelines, including the script and layout threads, as well
         // as the navigation context.
+        // PAUL: nuking the url. This is not needed anymore. Frame & Pipeline are created in
+        // BrowserManager::new_browser() via NewTopFrame
         let (constellation_chan, sw_senders) = create_constellation(opts.user_agent.clone(),
                                                                     opts.config_dir.clone(),
-                                                                    opts.url.clone(),
                                                                     compositor_proxy.clone_compositor_proxy(),
                                                                     time_profiler_chan.clone(),
                                                                     mem_profiler_chan.clone(),
@@ -231,7 +234,7 @@ impl<Window> Browser<Window> where Window: WindowMethods + 'static {
             webrender_api_sender: webrender_api_sender,
         });
 
-        Browser {
+        BrowserManager {
             compositor: compositor,
             constellation_chan: constellation_chan,
         }
@@ -268,11 +271,26 @@ impl<Window> Browser<Window> where Window: WindowMethods + 'static {
             Box::new(logger)
         }).expect("Failed to set logger.")
     }
+
+    // PAUL: this will return a frame_id. I don't really like the idea of handing Frame ids to the
+    // embedder, because, semantically, FrameId is not necessary a top level frame
+    pub fn new_browser(&self, load_data: LoadData, context: Option<String>) -> Result<FrameId, ()> {
+        let (chan, port) = ipc::channel().expect("Failed to create IPC channel!");
+        self.constellation_chan.send(ConstellationMsg::NewTopFrame(load_data, context, chan)).unwrap();
+        if let Ok(frame_id) = port.recv() {
+            return Ok(frame_id);
+        } else {
+            return Err(());
+        }
+    }
+
+    pub fn set_visible_browser(&self, frame_id: FrameId) {
+        self.constellation_chan.send(ConstellationMsg::ActiveTopLevelFrame(frame_id)).unwrap();
+    }
 }
 
 fn create_constellation(user_agent: Cow<'static, str>,
                         config_dir: Option<PathBuf>,
-                        url: Option<ServoUrl>,
                         compositor_proxy: Box<CompositorProxy + Send>,
                         time_profiler_chan: time::ProfilerChan,
                         mem_profiler_chan: mem::ProfilerChan,
@@ -322,9 +340,7 @@ fn create_constellation(user_agent: Cow<'static, str>,
         constellation_chan.send(ConstellationMsg::SetWebVRThread(webvr_thread)).unwrap();
     }
 
-    if let Some(url) = url {
-        constellation_chan.send(ConstellationMsg::InitLoadUrl(url)).unwrap();
-    };
+    // PAUL: we don't create an initial pipeline
 
     // channels to communicate with Service Worker Manager
     let sw_senders = SWManagerSenders {

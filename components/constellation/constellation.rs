@@ -84,7 +84,7 @@ use ipc_channel::router::ROUTER;
 use itertools::Itertools;
 use layout_traits::LayoutThreadFactory;
 use log::{Log, LogLevel, LogLevelFilter, LogMetadata, LogRecord};
-use msg::constellation_msg::{FrameId, FrameType, PipelineId};
+use msg::constellation_msg::{FrameId, FrameType, NavigationReason, PipelineId};
 use msg::constellation_msg::{Key, KeyModifiers, KeyState};
 use msg::constellation_msg::{PipelineNamespace, PipelineNamespaceId, TraversalDirection};
 use net_traits::{self, IpcSend, ResourceThreads};
@@ -850,7 +850,7 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
             // However, if the id is not encompassed by another change, it will be.
             FromCompositorMsg::LoadUrl(source_id, load_data) => {
                 debug!("constellation got URL load message from compositor");
-                self.handle_load_url_msg(source_id, load_data, false);
+                self.handle_load_url_msg(source_id, load_data, false, NavigationReason::Other);
             }
             FromCompositorMsg::IsReadyToSaveImage(pipeline_states) => {
                 let is_ready = self.handle_is_ready_to_save_image(pipeline_states);
@@ -864,10 +864,15 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
                     println!("sent response");
                 }
             }
-            // This should only be called once per constellation, and only by the browser
-            FromCompositorMsg::InitLoadUrl(url) => {
-                debug!("constellation got init load URL message");
-                self.handle_init_load(url);
+             FromCompositorMsg::NewTopFrame(load_data, context, resp_chan) => {
+                // PAUL: this is where we create a new top level browsing context, aka TopFrame, aka Browser
+                 debug!("constellation got new top frame message");
+                 self.handle_new_top_frame_msg(load_data, context, resp_chan);
+             }
+             FromCompositorMsg::ActiveTopLevelFrame(frame_id) => {
+                 // PAUL: this is where we make a top level frame visible, and make all of the other hidden
+                 debug!("constellation got active top level frame message");
+                 self.handle_active_top_level_frame_msg(frame_id);
             }
             // Handle a forward or back request
             FromCompositorMsg::TraverseHistory(pipeline_id, direction) => {
@@ -929,7 +934,7 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
             // However, if the id is not encompassed by another change, it will be.
             FromScriptMsg::LoadUrl(source_id, load_data, replace) => {
                 debug!("constellation got URL load message from script");
-                self.handle_load_url_msg(source_id, load_data, replace);
+                self.handle_load_url_msg(source_id, load_data, replace, NavigationReason::UserAction);
             }
             // A page loaded has completed all parsing, script, and reflow messages have been sent.
             FromScriptMsg::LoadComplete(pipeline_id) => {
@@ -1337,11 +1342,12 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
         }
     }
 
-    fn handle_init_load(&mut self, url: ServoUrl) {
+    fn handle_new_top_frame_msg(&mut self, load_data: LoadData, _context: Option<String>, resp_chan: IpcSender<FrameId>) {
+        // PAUL: this is where we should create another root frame.
+        // We return the frame_id of that new frame
         let window_size = self.window_size.initial_viewport;
         let root_pipeline_id = PipelineId::new();
         let root_frame_id = self.root_frame_id;
-        let load_data = LoadData::new(url.clone(), None, None);
         let sandbox = IFrameSandboxState::IFrameUnsandboxed;
         self.new_pipeline(root_pipeline_id, root_frame_id, None, Some(window_size), load_data.clone(), sandbox, false);
         self.handle_load_start_msg(root_pipeline_id);
@@ -1351,6 +1357,14 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
             load_data: load_data,
             replace_instant: None,
         });
+        if let Err(e) = resp_chan.send(self.root_frame_id) {
+            warn!("Failed handle_new_top_frame response ({}).", e);
+        }
+    }
+
+    fn handle_active_top_level_frame_msg(&mut self, frame_id: FrameId) {
+        // PAUL: this is where we should tell WR to render this frame tree,
+        // and also update the DOM visibility API
     }
 
     fn handle_frame_size_msg(&mut self,
@@ -1574,14 +1588,15 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
         }
     }
 
-    fn handle_load_url_msg(&mut self, source_id: PipelineId, load_data: LoadData, replace: bool) {
-        self.load_url(source_id, load_data, replace);
+    fn handle_load_url_msg(&mut self, source_id: PipelineId, load_data: LoadData, replace: bool, reason: NavigationReason) {
+        self.load_url(source_id, load_data, replace, reason);
     }
 
-    fn load_url(&mut self, source_id: PipelineId, load_data: LoadData, replace: bool) -> Option<PipelineId> {
+    fn load_url(&mut self, source_id: PipelineId, load_data: LoadData, replace: bool, reason: NavigationReason) -> Option<PipelineId> {
         // Allow the embedder to handle the url itself
         let (chan, port) = ipc::channel().expect("Failed to create IPC channel!");
-        self.compositor_proxy.send(ToCompositorMsg::AllowNavigation(load_data.url.clone(), chan));
+        // FIXME: use the relevant top frame
+        self.compositor_proxy.send(ToCompositorMsg::AllowNavigation(self.root_frame_id, load_data.url.clone(), reason, chan));
         if let Ok(false) = port.recv() {
             return None;
         }
@@ -2175,7 +2190,7 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
 
         entries.append(&mut future_entries);
 
-        self.compositor_proxy.send(ToCompositorMsg::HistoryChanged(entries, current_index));
+        self.compositor_proxy.send(ToCompositorMsg::HistoryChanged(top_level_frame_id, entries, current_index));
     }
 
     fn get_top_level_frame_for_pipeline(&self, mut pipeline_id: PipelineId) -> FrameId {
@@ -2204,7 +2219,7 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
                               load_data: LoadData,
                               reply: IpcSender<webdriver_msg::LoadStatus>,
                               replace: bool) {
-        let new_pipeline_id = self.load_url(pipeline_id, load_data, replace);
+        let new_pipeline_id = self.load_url(pipeline_id, load_data, replace, NavigationReason::WebDriver);
         if let Some(id) = new_pipeline_id {
             self.webdriver.load_channel = Some((id, reply));
         }

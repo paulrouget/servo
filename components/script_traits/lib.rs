@@ -729,8 +729,10 @@ pub enum ConstellationMsg {
     /// Requests that the constellation inform the compositor of the title of the pipeline
     /// immediately.
     GetPipelineTitle(PipelineId),
-    /// Request to load the initial page.
-    InitLoadUrl(ServoUrl),
+    /// Request to add a new top frame.
+    NewTopFrame(LoadData, Option<String>, IpcSender<FrameId>),
+    /// Request to make a top frame the rendered frame.
+    ActiveTopLevelFrame(FrameId),
     /// Query the constellation to see if the current compositor output is stable
     IsReadyToSaveImage(HashMap<PipelineId, Epoch>),
     /// Inform the constellation of a key event.
