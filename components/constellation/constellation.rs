@@ -888,10 +888,15 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
                     println!("sent response");
                 }
             }
-            // This should only be called once per constellation, and only by the browser
-            FromCompositorMsg::InitLoadUrl(url) => {
-                debug!("constellation got init load URL message");
-                self.handle_init_load(url);
+            FromCompositorMsg::NewTopFrame(load_data, ctx, resp_chan) => {
+                // PAUL: this is where we create a new top level browsing context, aka TopFrame, aka Browser
+                debug!("constellation got new top frame message");
+                self.handle_new_top_frame_msg(load_data, ctx, resp_chan);
+            }
+            FromCompositorMsg::ActiveTopLevelFrame(ctx) => {
+                // PAUL: this is where we make a top level frame visible, and make all of the other hidden
+                debug!("constellation got active top level frame message");
+                self.handle_active_top_level_frame_msg(ctx);
             }
             // Handle a forward or back request
             FromCompositorMsg::TraverseHistory(top_level_browsing_context_id, direction) => {
@@ -1389,12 +1394,11 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
         }
     }
 
-    fn handle_init_load(&mut self, url: ServoUrl) {
+    fn handle_new_top_frame_msg(&mut self, load_data: LoadData, _context: Option<String>, resp_chan: IpcSender<TopLevelBrowsingContextId>) {
         let window_size = self.window_size.initial_viewport;
         let pipeline_id = PipelineId::new();
         let top_level_browsing_context_id = TopLevelBrowsingContextId::new();
         let browsing_context_id = BrowsingContextId::from(top_level_browsing_context_id);
-        let load_data = LoadData::new(url.clone(), None, None, None);
         let sandbox = IFrameSandboxState::IFrameUnsandboxed;
         self.focus_pipeline_id = Some(pipeline_id);
         self.new_pipeline(pipeline_id,
@@ -1413,6 +1417,13 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
             load_data: load_data,
             replace_instant: None,
         });
+        if let Err(e) = resp_chan.send(top_level_browsing_context_id) {
+            warn!("meh ({}).", e);
+        }
+    }
+
+    fn handle_active_top_level_frame_msg(&mut self, ctx: TopLevelBrowsingContextId) {
+        self.send_frame_tree(ctx);
     }
 
     fn handle_iframe_size_msg(&mut self,
@@ -2251,7 +2262,7 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
                        .map(&keep_load_data_if_top_browsing_context)
                        .scan(current_load_data.clone(), &resolve_load_data));
 
-        self.compositor_proxy.send(ToCompositorMsg::HistoryChanged(entries, current_index));
+        self.compositor_proxy.send(ToCompositorMsg::HistoryChanged(top_level_browsing_context_id, entries, current_index));
     }
 
     fn load_url_for_webdriver(&mut self,

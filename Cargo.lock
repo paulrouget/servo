@@ -2529,6 +2529,7 @@ dependencies = [
  "servo_remutex_tests 0.0.1",
  "sig 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "style_tests 0.0.1",
+ "tinyfiledialogs 2.5.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

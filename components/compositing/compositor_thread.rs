@@ -21,6 +21,7 @@ use style_traits::cursor::Cursor;
 use style_traits::viewport::ViewportConstraints;
 use webrender;
 use webrender_traits;
+use msg::constellation_msg::TopLevelBrowsingContextId;
 
 /// Sends messages to the compositor. This is a trait supplied by the port because the method used
 /// to communicate with the compositor may have to kick OS event loops awake, communicate cross-
@@ -84,7 +85,7 @@ pub enum Msg {
     /// The load of a page has completed
     LoadComplete,
     /// The history state has changed.
-    HistoryChanged(Vec<LoadData>, usize),
+    HistoryChanged(TopLevelBrowsingContextId, Vec<LoadData>, usize),
     /// Wether or not to follow a link
     AllowNavigation(ServoUrl, IpcSender<bool>),
     /// We hit the delayed composition timeout. (See `delayed_composition.rs`.)

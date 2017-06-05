@@ -41,6 +41,7 @@ use touch::{TouchHandler, TouchAction};
 use webrender;
 use webrender_traits::{self, ClipId, LayoutPoint, ScrollEventPhase, ScrollLocation, ScrollClamping};
 use windowing::{self, MouseWindowEvent, WindowEvent, WindowMethods, WindowNavigateMsg};
+use msg::constellation_msg::TopLevelBrowsingContextId;
 
 #[derive(Debug, PartialEq)]
 enum UnableToComposite {
@@ -159,11 +160,6 @@ pub struct IOCompositor<Window: WindowMethods> {
 
     /// The time of the last zoom action has started.
     zoom_time: f64,
-
-    /// Whether the page being rendered has loaded completely.
-    /// Differs from ReadyState because we can finish loading (ready)
-    /// many times for a single page.
-    got_load_complete_message: bool,
 
     /// The current frame tree ID (used to reject old paint buffers)
     frame_tree_id: FrameTreeId,
@@ -389,7 +385,6 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             max_viewport_zoom: None,
             zoom_action: false,
             zoom_time: 0f64,
-            got_load_complete_message: false,
             frame_tree_id: FrameTreeId(0),
             constellation_chan: state.constellation_chan,
             time_profiler_chan: state.time_profiler_chan,
@@ -520,8 +515,6 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             }
 
             (Msg::LoadComplete, ShutdownState::NotShuttingDown) => {
-                self.got_load_complete_message = true;
-
                 // If we're painting in headless mode, schedule a recomposite.
                 if opts::get().output_file.is_some() || opts::get().exit_after_load {
                     self.composite_if_necessary(CompositingReason::Headless);
@@ -608,8 +601,8 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.window.head_parsed();
             }
 
-            (Msg::HistoryChanged(entries, current), ShutdownState::NotShuttingDown) => {
-                self.window.history_changed(entries, current);
+            (Msg::HistoryChanged(ctx, entries, current), ShutdownState::NotShuttingDown) => {
+                self.window.history_changed(ctx, entries, current);
             }
 
             (Msg::PipelineVisibilityChanged(pipeline_id, visible), ShutdownState::NotShuttingDown) => {
@@ -806,7 +799,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.on_resize_window_event(size);
             }
 
-            WindowEvent::LoadUrl(url_string) => {
+            WindowEvent::LoadUrl(context_id, url_string) => {
                 self.on_load_url_window_event(url_string);
             }
 
@@ -851,8 +844,8 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.on_pinch_zoom_window_event(magnification);
             }
 
-            WindowEvent::Navigation(direction) => {
-                self.on_navigation_window_event(direction);
+            WindowEvent::Navigation(ctx, direction) => {
+                self.on_navigation_window_event(ctx, direction);
             }
 
             WindowEvent::TouchpadPressure(cursor, pressure, stage) => {
@@ -870,12 +863,8 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 }
             }
 
-            WindowEvent::Reload => {
-                let top_level_browsing_context_id = match self.root_pipeline {
-                    Some(ref pipeline) => pipeline.top_level_browsing_context_id,
-                    None => return warn!("Window reload without root pipeline."),
-                };
-                let msg = ConstellationMsg::Reload(top_level_browsing_context_id);
+            WindowEvent::Reload(ctx) => {
+                let msg = ConstellationMsg::Reload(ctx);
                 if let Err(e) = self.constellation_chan.send(msg) {
                     warn!("Sending reload to constellation failed ({}).", e);
                 }
@@ -908,18 +897,21 @@ impl<Window: WindowMethods> IOCompositor<Window> {
     }
 
     fn on_load_url_window_event(&mut self, url_string: String) {
+        // FIXME(paul): strip everything from here.
         debug!("osmain: loading URL `{}`", url_string);
-        self.got_load_complete_message = false;
         match ServoUrl::parse(&url_string) {
             Ok(url) => {
-                let msg = match self.root_pipeline {
-                    Some(ref pipeline) =>
-                        ConstellationMsg::LoadUrl(pipeline.id, LoadData::new(url, Some(pipeline.id), None, None)),
-                    None => ConstellationMsg::InitLoadUrl(url)
+                match self.root_pipeline {
+                    Some(ref pipeline) => {
+                        let msg = ConstellationMsg::LoadUrl(pipeline.id, LoadData::new(url, Some(pipeline.id), None, None));
+                        if let Err(e) = self.constellation_chan.send(msg) {
+                            warn!("Sending load url to constellation failed ({}).", e);
+                        }
+                    },
+                    None => {
+                        warn!("PAUL: SHOULD NOT HAPPEN");
+                    }
                 };
-                if let Err(e) = self.constellation_chan.send(msg) {
-                    warn!("Sending load url to constellation failed ({}).", e);
-                }
             },
             Err(e) => warn!("Parsing URL {} failed ({}).", url_string, e),
         }
@@ -1342,16 +1334,16 @@ impl<Window: WindowMethods> IOCompositor<Window> {
         });
     }
 
-    fn on_navigation_window_event(&self, direction: WindowNavigateMsg) {
+    fn on_navigation_window_event(&self, ctx: TopLevelBrowsingContextId, direction: WindowNavigateMsg) {
         let direction = match direction {
             windowing::WindowNavigateMsg::Forward => TraversalDirection::Forward(1),
             windowing::WindowNavigateMsg::Back => TraversalDirection::Back(1),
         };
-        let top_level_browsing_context_id = match self.root_pipeline {
-            Some(ref pipeline) => pipeline.top_level_browsing_context_id,
-            None => return warn!("Sending navigation to constellation with no root pipeline."),
-        };
-        let msg = ConstellationMsg::TraverseHistory(top_level_browsing_context_id, direction);
+        // let top_level_browsing_context_id = match self.root_pipeline {
+        //     Some(ref pipeline) => pipeline.top_level_browsing_context_id,
+        //     None => return warn!("Sending navigation to constellation with no root pipeline."),
+        // };
+        let msg = ConstellationMsg::TraverseHistory(ctx, direction);
         if let Err(e) = self.constellation_chan.send(msg) {
             warn!("Sending navigation to constellation failed ({}).", e);
         }
