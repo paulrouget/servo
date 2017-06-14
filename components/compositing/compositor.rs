@@ -467,15 +467,14 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.change_running_animations_state(pipeline_id, animation_state);
             }
 
-            (Msg::ChangePageTitle(pipeline_id, title), ShutdownState::NotShuttingDown) => {
-                self.change_page_title(pipeline_id, title);
+            (Msg::ChangePageTitle(top_level_browsing_context, title), ShutdownState::NotShuttingDown) => {
+                self.window.set_page_title(top_level_browsing_context, title);
             }
 
             (Msg::SetFrameTree(frame_tree, response_chan),
              ShutdownState::NotShuttingDown) => {
                 self.set_frame_tree(&frame_tree, response_chan);
                 self.send_viewport_rects();
-                self.title_for_main_frame();
             }
 
             (Msg::ScrollFragmentPoint(scroll_root_id, point, _),
@@ -483,46 +482,45 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.scroll_fragment_to_point(scroll_root_id, point);
             }
 
-            (Msg::MoveTo(point),
+            (Msg::MoveTo(top_level_browsing_context_id, point),
              ShutdownState::NotShuttingDown) => {
-                self.window.set_position(point);
+                self.window.set_position(top_level_browsing_context_id, point);
             }
 
-            (Msg::ResizeTo(size),
+            (Msg::ResizeTo(top_level_browsing_context_id, size),
              ShutdownState::NotShuttingDown) => {
-                self.window.set_inner_size(size);
+                self.window.set_inner_size(top_level_browsing_context_id, size);
             }
 
-            (Msg::GetClientWindow(send),
+            (Msg::GetClientWindow(top_level_browsing_context_id, send),
              ShutdownState::NotShuttingDown) => {
-                let rect = self.window.client_window();
+                let rect = self.window.client_window(top_level_browsing_context_id);
                 if let Err(e) = send.send(rect) {
                     warn!("Sending response to get client window failed ({}).", e);
                 }
             }
 
-            (Msg::Status(message), ShutdownState::NotShuttingDown) => {
-                self.window.status(message);
+            (Msg::Status(top_level_browsing_context_id, message),
+             ShutdownState::NotShuttingDown) => {
+                self.window.status(top_level_browsing_context_id, message);
             }
 
-            (Msg::LoadStart, ShutdownState::NotShuttingDown) => {
-                self.window.load_start();
+            (Msg::LoadStart(top_level_browsing_context_id), ShutdownState::NotShuttingDown) => {
+                self.window.load_start(top_level_browsing_context_id);
             }
 
-            (Msg::LoadComplete, ShutdownState::NotShuttingDown) => {
+            (Msg::LoadComplete(top_level_browsing_context_id), ShutdownState::NotShuttingDown) => {
                 // If we're painting in headless mode, schedule a recomposite.
                 if opts::get().output_file.is_some() || opts::get().exit_after_load {
                     self.composite_if_necessary(CompositingReason::Headless);
                 }
 
                 // Inform the embedder that the load has finished.
-                //
-                // TODO(pcwalton): Specify which frame's load completed.
-                self.window.load_end();
+                self.window.load_end(top_level_browsing_context_id);
             }
 
-            (Msg::AllowNavigation(url, response_chan), ShutdownState::NotShuttingDown) => {
-                let allow = self.window.allow_navigation(url);
+            (Msg::AllowNavigation(top_level_browsing_context_id, url, response_chan), ShutdownState::NotShuttingDown) => {
+                let allow = self.window.allow_navigation(top_level_browsing_context_id, url);
                 if let Err(e) = response_chan.send(allow) {
                     warn!("Failed to send allow_navigation result ({}).", e);
                 }
@@ -542,9 +540,9 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.composition_request = CompositionRequest::CompositeNow(reason)
             }
 
-            (Msg::KeyEvent(ch, key, state, modified), ShutdownState::NotShuttingDown) => {
+            (Msg::KeyEvent(top_level_browsing_context_id, ch, key, state, modified), ShutdownState::NotShuttingDown) => {
                 if state == KeyState::Pressed {
-                    self.window.handle_key(ch, key, modified);
+                    self.window.handle_key(top_level_browsing_context_id, ch, key, modified);
                 }
             }
 
@@ -588,16 +586,16 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.composite_if_necessary(CompositingReason::Headless);
             }
 
-            (Msg::NewFavicon(url), ShutdownState::NotShuttingDown) => {
-                self.window.set_favicon(url);
+            (Msg::NewFavicon(top_level_browsing_context_id, url), ShutdownState::NotShuttingDown) => {
+                self.window.set_favicon(top_level_browsing_context_id, url);
             }
 
-            (Msg::HeadParsed, ShutdownState::NotShuttingDown) => {
-                self.window.head_parsed();
+            (Msg::HeadParsed(top_level_browsing_context_id), ShutdownState::NotShuttingDown) => {
+                self.window.head_parsed(top_level_browsing_context_id);
             }
 
-            (Msg::HistoryChanged(entries, current), ShutdownState::NotShuttingDown) => {
-                self.window.history_changed(entries, current);
+            (Msg::HistoryChanged(top_level_browsing_context_id, entries, current), ShutdownState::NotShuttingDown) => {
+                self.window.history_changed(top_level_browsing_context_id, entries, current);
             }
 
             (Msg::PipelineVisibilityChanged(pipeline_id, visible), ShutdownState::NotShuttingDown) => {
@@ -627,8 +625,8 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 func();
             }
 
-            (Msg::SetFullscreenState(state), ShutdownState::NotShuttingDown) => {
-                self.window.set_fullscreen_state(state);
+            (Msg::SetFullscreenState(top_level_browsing_context_id, state), ShutdownState::NotShuttingDown) => {
+                self.window.set_fullscreen_state(top_level_browsing_context_id, state);
             }
 
             // When we are shutting_down, we need to avoid performing operations
@@ -683,15 +681,6 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 warn!("Compositor layer has an unknown pipeline ({:?}).", pipeline_id);
                 None
             }
-        }
-    }
-
-    fn change_page_title(&mut self, pipeline_id: PipelineId, title: Option<String>) {
-        let set_title = self.root_pipeline.as_ref().map_or(false, |root_pipeline| {
-            root_pipeline.id == pipeline_id
-        });
-        if set_title {
-            self.window.set_page_title(title);
         }
     }
 
@@ -855,6 +844,8 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             }
 
             WindowEvent::Reload => {
+                // FIXME(paul): event should come with top level browsing context
+                // … same for many of these.
                 let top_level_browsing_context_id = match self.root_pipeline {
                     Some(ref pipeline) => pipeline.top_level_browsing_context_id,
                     None => return warn!("Window reload without root pipeline."),
@@ -892,6 +883,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
     }
 
     fn on_load_url_window_event(&mut self, url_string: String) {
+        // FIXME(paul): move logic to constellation
         debug!("osmain: loading URL `{}`", url_string);
         match ServoUrl::parse(&url_string) {
             Ok(url) => {
@@ -1326,6 +1318,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
     }
 
     fn on_navigation_window_event(&self, direction: WindowNavigateMsg) {
+        // FIXME(paul) no!
         let direction = match direction {
             windowing::WindowNavigateMsg::Forward => TraversalDirection::Forward(1),
             windowing::WindowNavigateMsg::Back => TraversalDirection::Back(1),
@@ -1345,6 +1338,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                     key: Key,
                     state: KeyState,
                     modifiers: KeyModifiers) {
+        // FIXME(paul) hmmm…
         // Steal a few key events for webrender debug options.
         if modifiers.contains(CONTROL) && state == KeyState::Pressed {
             match key {
@@ -1714,17 +1708,6 @@ impl<Window: WindowMethods> IOCompositor<Window> {
     pub fn pinch_zoom_level(&self) -> f32 {
         // TODO(gw): Access via WR.
         1.0
-    }
-
-    pub fn title_for_main_frame(&self) {
-        let root_pipeline_id = match self.root_pipeline {
-            None => return,
-            Some(ref root_pipeline) => root_pipeline.id,
-        };
-        let msg = ConstellationMsg::GetPipelineTitle(root_pipeline_id);
-        if let Err(e) = self.constellation_chan.send(msg) {
-            warn!("Failed to send pipeline title ({}).", e);
-        }
     }
 }
 

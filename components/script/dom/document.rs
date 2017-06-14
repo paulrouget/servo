@@ -113,7 +113,7 @@ use script_runtime::{CommonScriptMsg, ScriptThreadEventCategory};
 use script_thread::{MainThreadScriptMsg, Runnable, ScriptThread};
 use script_traits::{AnimationState, CompositorEvent, DocumentActivity};
 use script_traits::{MouseButton, MouseEventType, MozBrowserEvent};
-use script_traits::{MsDuration, ScriptMsg as ConstellationMsg, TouchpadPressurePhase};
+use script_traits::{MsDuration, ScriptMsg, TouchpadPressurePhase};
 use script_traits::{TouchEventType, TouchId};
 use script_traits::UntrustedNodeAddress;
 use servo_atoms::Atom;
@@ -793,8 +793,7 @@ impl Document {
             // https://html.spec.whatwg.org/multipage/#focus-chain
             if focus_type == FocusType::Element {
                 let global_scope = self.window.upcast::<GlobalScope>();
-                let event = ConstellationMsg::Focus(global_scope.pipeline_id());
-                global_scope.constellation_chan().send(event).unwrap();
+                global_scope.script_to_constellation_chan().send(ScriptMsg::Focus).unwrap();
             }
         }
     }
@@ -811,12 +810,10 @@ impl Document {
 
     /// Sends this document's title to the compositor.
     pub fn send_title_to_compositor(&self) {
-        let window = self.window();
-        let global_scope = window.upcast::<GlobalScope>();
+        let global_scope = self.window().upcast::<GlobalScope>();
         global_scope
-              .constellation_chan()
-              .send(ConstellationMsg::SetTitle(global_scope.pipeline_id(),
-                                               Some(String::from(self.Title()))))
+              .script_to_constellation_chan()
+              .send(ScriptMsg::SetTitle(Some(String::from(self.Title()))))
               .unwrap();
     }
 
@@ -869,8 +866,8 @@ impl Document {
                 let child_point = client_point - child_origin;
 
                 let event = CompositorEvent::MouseButtonEvent(mouse_event_type, button, child_point);
-                let event = ConstellationMsg::ForwardEvent(pipeline_id, event);
-                self.window.upcast::<GlobalScope>().constellation_chan().send(event).unwrap();
+                let event = ScriptMsg::ForwardEvent(pipeline_id, event);
+                self.window.upcast::<GlobalScope>().script_to_constellation_chan().send(event).unwrap();
             }
             return;
         }
@@ -1026,8 +1023,8 @@ impl Document {
                 let event = CompositorEvent::TouchpadPressureEvent(child_point,
                                                                    pressure,
                                                                    phase_now);
-                let event = ConstellationMsg::ForwardEvent(pipeline_id, event);
-                self.window.upcast::<GlobalScope>().constellation_chan().send(event).unwrap();
+                let event = ScriptMsg::ForwardEvent(pipeline_id, event);
+                self.window.upcast::<GlobalScope>().script_to_constellation_chan().send(event).unwrap();
             }
             return;
         }
@@ -1128,8 +1125,8 @@ impl Document {
                     let child_point = client_point - child_origin;
 
                     let event = CompositorEvent::MouseMoveEvent(Some(child_point));
-                    let event = ConstellationMsg::ForwardEvent(pipeline_id, event);
-                    self.window.upcast::<GlobalScope>().constellation_chan().send(event).unwrap();
+                    let event = ScriptMsg::ForwardEvent(pipeline_id, event);
+                    self.window.upcast::<GlobalScope>().script_to_constellation_chan().send(event).unwrap();
                 }
                 return;
             }
@@ -1235,8 +1232,8 @@ impl Document {
                 let child_point = point - child_origin;
 
                 let event = CompositorEvent::TouchEvent(event_type, touch_id, child_point);
-                let event = ConstellationMsg::ForwardEvent(pipeline_id, event);
-                self.window.upcast::<GlobalScope>().constellation_chan().send(event).unwrap();
+                let event = ScriptMsg::ForwardEvent(pipeline_id, event);
+                self.window.upcast::<GlobalScope>().script_to_constellation_chan().send(event).unwrap();
             }
             return TouchEventResult::Forwarded;
         }
@@ -1327,8 +1324,7 @@ impl Document {
                               ch: Option<char>,
                               key: Key,
                               state: KeyState,
-                              modifiers: KeyModifiers,
-                              constellation: &IpcSender<ConstellationMsg>) {
+                              modifiers: KeyModifiers) {
         let focused = self.get_focused_element();
         let body = self.GetBody();
 
@@ -1404,7 +1400,9 @@ impl Document {
         }
 
         if cancel_state == EventDefault::Allowed {
-            constellation.send(ConstellationMsg::SendKeyEvent(ch, key, state, modifiers)).unwrap();
+            let msg = ScriptMsg::SendKeyEvent(ch, key, state, modifiers);
+            // FIXME: is that used a lot? Should we have a document:: function for that?
+            self.window.upcast::<GlobalScope>().script_to_constellation_chan().send(msg).unwrap();
 
             // This behavior is unspecced
             // We are supposed to dispatch synthetic click activation for Space and/or Return,
@@ -1523,10 +1521,8 @@ impl Document {
         if PREFS.is_mozbrowser_enabled() {
             if let Some((parent_pipeline_id, _)) = self.window.parent_info() {
                 let top_level_browsing_context_id = self.window.window_proxy().top_level_browsing_context_id();
-                let event = ConstellationMsg::MozBrowserEvent(parent_pipeline_id,
-                                                              top_level_browsing_context_id,
-                                                              event);
-                self.window.upcast::<GlobalScope>().constellation_chan().send(event).unwrap();
+                let event = ScriptMsg::MozBrowserEvent(parent_pipeline_id, event);
+                self.window.upcast::<GlobalScope>().script_to_constellation_chan().send(event).unwrap();
             }
         }
     }
@@ -1548,10 +1544,8 @@ impl Document {
         if !self.running_animation_callbacks.get() {
             if !self.is_faking_animation_frames() {
                 let global_scope = self.window.upcast::<GlobalScope>();
-                let event = ConstellationMsg::ChangeRunningAnimationsState(
-                    global_scope.pipeline_id(),
-                    AnimationState::AnimationCallbacksPresent);
-                global_scope.constellation_chan().send(event).unwrap();
+                let event = ScriptMsg::ChangeRunningAnimationsState(AnimationState::AnimationCallbacksPresent);
+                global_scope.script_to_constellation_chan().send(event).unwrap();
             } else {
                 let callback = FakeRequestAnimationFrameCallback {
                     document: Trusted::new(self),
@@ -1610,10 +1604,8 @@ impl Document {
             mem::swap(&mut *self.animation_frame_list.borrow_mut(),
                       &mut *animation_frame_list);
             let global_scope = self.window.upcast::<GlobalScope>();
-            let event = ConstellationMsg::ChangeRunningAnimationsState(
-                global_scope.pipeline_id(),
-                AnimationState::NoAnimationCallbacksPresent);
-            global_scope.constellation_chan().send(event).unwrap();
+            let event = ScriptMsg::ChangeRunningAnimationsState(AnimationState::NoAnimationCallbacksPresent);
+            global_scope.script_to_constellation_chan().send(event).unwrap();
         }
 
         // Update the counter of spurious animation frames.
@@ -1877,9 +1869,7 @@ impl Document {
 
     pub fn notify_constellation_load(&self) {
         let global_scope = self.window.upcast::<GlobalScope>();
-        let pipeline_id = global_scope.pipeline_id();
-        let load_event = ConstellationMsg::LoadComplete(pipeline_id);
-        global_scope.constellation_chan().send(load_event).unwrap();
+        global_scope.script_to_constellation_chan().send(ScriptMsg::LoadComplete).unwrap();
     }
 
     pub fn set_current_parser(&self, script: Option<&ServoParser>) {
@@ -2472,8 +2462,8 @@ impl Document {
         let window = self.window();
         // Step 6
         if !error {
-            let event = ConstellationMsg::SetFullscreenState(true);
-            window.upcast::<GlobalScope>().constellation_chan().send(event).unwrap();
+            let event = ScriptMsg::SetFullscreenState(true);
+            window.upcast::<GlobalScope>().script_to_constellation_chan().send(event).unwrap();
         }
 
         // Step 7
@@ -2505,8 +2495,8 @@ impl Document {
 
         let window = self.window();
         // Step 8
-        let event = ConstellationMsg::SetFullscreenState(false);
-        window.upcast::<GlobalScope>().constellation_chan().send(event).unwrap();
+        let event = ScriptMsg::SetFullscreenState(false);
+        window.upcast::<GlobalScope>().script_to_constellation_chan().send(event).unwrap();
 
         // Step 9
         let trusted_element = Trusted::new(element.r());
