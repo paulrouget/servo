@@ -82,6 +82,7 @@ use gaol::sandbox::{ChildSandbox, ChildSandboxMethods};
 use gfx::font_cache_thread::FontCacheThread;
 use ipc_channel::ipc::{self, IpcSender};
 use log::{Log, LogMetadata, LogRecord};
+use msg::constellation_msg::TopLevelBrowsingContextId;
 use net::resource_thread::new_resource_threads;
 use net_traits::IpcSend;
 use profile::mem as profile_mem;
@@ -240,10 +241,10 @@ impl<Window> Browser<Window> where Window: WindowMethods + 'static {
     }
 
     pub fn new_tlbc(&self, url: ServoUrl) -> Result<TopLevelBrowsingContextId,()> {
-        let (sender, receiver) = channel();
-        self.constellation_chan.send(ConstellationMsg::NewTLBC(url, chan)).unwrap();
+        let (sender, receiver) = ipc::channel().expect("ipc channel failure");
+        self.constellation_chan.send(ConstellationMsg::NewTLBC(url, sender)).unwrap();
         if let Ok(ctx) = receiver.recv() {
-            ctx
+            Ok(ctx)
         } else {
             Err(())
         }

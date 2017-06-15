@@ -753,8 +753,6 @@ pub enum ConstellationMsg {
     /// Request that the constellation send the current focused top-level browsing context id,
     /// over a provided channel.
     GetFocusTopLevelBrowsingContext(IpcSender<Option<TopLevelBrowsingContextId>>),
-    /// Request to load the initial page.
-    InitLoadUrl(ServoUrl),
     /// Query the constellation to see if the current compositor output is stable
     IsReadyToSaveImage(HashMap<PipelineId, Epoch>),
     /// Inform the constellation of a key event.
@@ -778,7 +776,7 @@ pub enum ConstellationMsg {
     /// Dispatch WebVR events to the subscribed script threads.
     WebVREvents(Vec<PipelineId>, Vec<WebVREvent>),
     /// FIXME
-    NewTLBC(ServoUrl, IpcSender<Option<TopLevelBrowsingContextId>>),
+    NewTLBC(ServoUrl, IpcSender<TopLevelBrowsingContextId>),
 }
 
 /// Resources required by workerglobalscopes

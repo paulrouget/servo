@@ -157,9 +157,9 @@ fn main() {
         browser: Browser::new(window.clone())
     };
 
-    let ctx = browser.browser.new_tlbc(target_url);
+    let ctx = browser.browser.new_tlbc(target_url).unwrap();
 
-    browser.browser.set_ctx(ctx);
+    window.set_ctx(ctx);
 
     browser.browser.setup_logging();
 
@@ -170,6 +170,7 @@ fn main() {
     // Feed events from the window to the browser until the browser
     // says to stop.
     loop {
+        println!(".");
         let should_continue = browser.browser.handle_events(window.wait_events());
         if !should_continue {
             break;
