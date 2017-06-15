@@ -779,8 +779,11 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.on_resize_window_event(size);
             }
 
-            WindowEvent::LoadUrl(url_string) => {
-                self.on_load_url_window_event(url_string);
+            WindowEvent::LoadUrl(top_level_browsing_context_id, url) => {
+                let msg = ConstellationMsg::LoadUrl(top_level_browsing_context_id, url);
+                if let Err(e) = self.constellation_chan.send(msg) {
+                    warn!("Sending load url to constellation failed ({}).", e);
+                }
             }
 
             WindowEvent::MouseWindowEventClass(mouse_window_event) => {
@@ -824,8 +827,16 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 self.on_pinch_zoom_window_event(magnification);
             }
 
-            WindowEvent::Navigation(direction) => {
-                self.on_navigation_window_event(direction);
+            WindowEvent::Navigation(top_level_browsing_context_id, direction) => {
+                // FIXME(paul) no!
+                let direction = match direction {
+                    windowing::WindowNavigateMsg::Forward => TraversalDirection::Forward(1),
+                    windowing::WindowNavigateMsg::Back => TraversalDirection::Back(1),
+                };
+                let msg = ConstellationMsg::TraverseHistory(top_level_browsing_context_id, direction);
+                if let Err(e) = self.constellation_chan.send(msg) {
+                    warn!("Sending navigation to constellation failed ({}).", e);
+                }
             }
 
             WindowEvent::TouchpadPressure(cursor, pressure, stage) => {
@@ -833,7 +844,23 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             }
 
             WindowEvent::KeyEvent(ch, key, state, modifiers) => {
-                self.on_key_event(ch, key, state, modifiers);
+                // FIXME(paul): this should be a message sent from embedder
+                // Steal a few key events for webrender debug options.
+                if modifiers.contains(CONTROL) && state == KeyState::Pressed {
+                    match key {
+                        Key::F12 => {
+                            let profiler_enabled = self.webrender.get_profiler_enabled();
+                            self.webrender.set_profiler_enabled(!profiler_enabled);
+                            return;
+                        }
+                        _ => {}
+                    }
+                }
+
+                let msg = ConstellationMsg::KeyEvent(ch, key, state, modifiers);
+                if let Err(e) = self.constellation_chan.send(msg) {
+                    warn!("Sending key event to constellation failed ({}).", e);
+                }
             }
 
             WindowEvent::Quit => {
@@ -843,14 +870,8 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                 }
             }
 
-            WindowEvent::Reload => {
-                // FIXME(paul): event should come with top level browsing context
-                // … same for many of these.
-                let top_level_browsing_context_id = match self.root_pipeline {
-                    Some(ref pipeline) => pipeline.top_level_browsing_context_id,
-                    None => return warn!("Window reload without root pipeline."),
-                };
-                let msg = ConstellationMsg::Reload(top_level_browsing_context_id);
+            WindowEvent::Reload(ctx) => {
+                let msg = ConstellationMsg::Reload(ctx);
                 if let Err(e) = self.constellation_chan.send(msg) {
                     warn!("Sending reload to constellation failed ({}).", e);
                 }
@@ -880,24 +901,6 @@ impl<Window: WindowMethods> IOCompositor<Window> {
         self.window_rect = new_window_rect;
 
         self.send_window_size(WindowSizeType::Resize);
-    }
-
-    fn on_load_url_window_event(&mut self, url_string: String) {
-        // FIXME(paul): move logic to constellation
-        debug!("osmain: loading URL `{}`", url_string);
-        match ServoUrl::parse(&url_string) {
-            Ok(url) => {
-                let msg = match self.root_pipeline {
-                    Some(ref pipeline) =>
-                        ConstellationMsg::LoadUrl(pipeline.id, LoadData::new(url, Some(pipeline.id), None, None)),
-                    None => ConstellationMsg::InitLoadUrl(url)
-                };
-                if let Err(e) = self.constellation_chan.send(msg) {
-                    warn!("Sending load url to constellation failed ({}).", e);
-                }
-            },
-            Err(e) => warn!("Parsing URL {} failed ({}).", url_string, e),
-        }
     }
 
     fn on_mouse_window_event_class(&mut self, mouse_window_event: MouseWindowEvent) {
@@ -1315,46 +1318,6 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             phase: ScrollEventPhase::Move(true),
             event_count: 1,
         });
-    }
-
-    fn on_navigation_window_event(&self, direction: WindowNavigateMsg) {
-        // FIXME(paul) no!
-        let direction = match direction {
-            windowing::WindowNavigateMsg::Forward => TraversalDirection::Forward(1),
-            windowing::WindowNavigateMsg::Back => TraversalDirection::Back(1),
-        };
-        let top_level_browsing_context_id = match self.root_pipeline {
-            Some(ref pipeline) => pipeline.top_level_browsing_context_id,
-            None => return warn!("Sending navigation to constellation with no root pipeline."),
-        };
-        let msg = ConstellationMsg::TraverseHistory(top_level_browsing_context_id, direction);
-        if let Err(e) = self.constellation_chan.send(msg) {
-            warn!("Sending navigation to constellation failed ({}).", e);
-        }
-    }
-
-    fn on_key_event(&mut self,
-                    ch: Option<char>,
-                    key: Key,
-                    state: KeyState,
-                    modifiers: KeyModifiers) {
-        // FIXME(paul) hmmm…
-        // Steal a few key events for webrender debug options.
-        if modifiers.contains(CONTROL) && state == KeyState::Pressed {
-            match key {
-                Key::F12 => {
-                    let profiler_enabled = self.webrender.get_profiler_enabled();
-                    self.webrender.set_profiler_enabled(!profiler_enabled);
-                    return;
-                }
-                _ => {}
-            }
-        }
-
-        let msg = ConstellationMsg::KeyEvent(ch, key, state, modifiers);
-        if let Err(e) = self.constellation_chan.send(msg) {
-            warn!("Sending key event to constellation failed ({}).", e);
-        }
     }
 
     fn send_viewport_rects(&self) {

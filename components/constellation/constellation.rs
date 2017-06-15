@@ -930,9 +930,14 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
             // Load a new page from a typed url
             // If there is already a pending page (self.pending_changes), it will not be overridden;
             // However, if the id is not encompassed by another change, it will be.
-            FromCompositorMsg::LoadUrl(source_id, load_data) => {
+            FromCompositorMsg::LoadUrl(ctx, url) => {
                 debug!("constellation got URL load message from compositor");
-                self.handle_load_url_msg(source_id, load_data, false);
+                let load_data = LoadData::new(url, None, None, None);
+                let pipeline_id = match self.browsing_contexts.get(&BrowsingContextId::from(ctx)) {
+                    Some(ctx) => ctx.pipeline_id,
+                    None => return warn!("BOOM"),
+                };
+                self.handle_load_url_msg(pipeline_id, load_data, false);
             }
             FromCompositorMsg::IsReadyToSaveImage(pipeline_states) => {
                 let is_ready = self.handle_is_ready_to_save_image(pipeline_states);
@@ -947,9 +952,9 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
                 }
             }
             // This should only be called once per constellation, and only by the browser
-            FromCompositorMsg::InitLoadUrl(url) => {
+            FromCompositorMsg::NewTLBC(url, response_chan) => {
                 debug!("constellation got init load URL message");
-                self.handle_init_load(url);
+                self.handle_new_tlbc(url, response_chan);
             }
             // Handle a forward or back request
             FromCompositorMsg::TraverseHistory(top_level_browsing_context_id, direction) => {
@@ -1486,13 +1491,17 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
         }
     }
 
-    fn handle_init_load(&mut self, url: ServoUrl) {
+    fn handle_new_tlbc(&mut self, url: ServoUrl, response_chan: IpcSender<TopLevelBrowsingContextId>) {
         let window_size = self.window_size.initial_viewport;
         let pipeline_id = PipelineId::new();
         let top_level_browsing_context_id = TopLevelBrowsingContextId::new();
+        if let Err(e) = response_chan.send(top_level_browsing_context_id) {
+            warn!("Failed to send newly created top level browsing context ({}).", e);
+        }
         let browsing_context_id = BrowsingContextId::from(top_level_browsing_context_id);
         let load_data = LoadData::new(url.clone(), None, None, None);
         let sandbox = IFrameSandboxState::IFrameUnsandboxed;
+        // FIXME(paul): this needs to change
         self.focus_pipeline_id = Some(pipeline_id);
         self.new_pipeline(pipeline_id,
                           browsing_context_id,

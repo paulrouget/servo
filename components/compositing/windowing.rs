@@ -55,7 +55,7 @@ pub enum WindowEvent {
     /// Touchpad Pressure
     TouchpadPressure(TypedPoint2D<f32, DevicePixel>, f32, TouchpadPressurePhase),
     /// Sent when a new URL is to be loaded.
-    LoadUrl(TopLevelBrowsingContextId, String),
+    LoadUrl(TopLevelBrowsingContextId, ServoUrl),
     /// Sent when a mouse hit test is to be performed.
     MouseWindowEventClass(MouseWindowEvent),
     /// Sent when a mouse move.
@@ -76,7 +76,7 @@ pub enum WindowEvent {
     /// Sent when the user quits the application
     Quit,
     /// Sent when a key input state changes
-    KeyEvent(TopLevelBrowsingContextId, Option<char>, Key, KeyState, KeyModifiers),
+    KeyEvent(Option<char>, Key, KeyState, KeyModifiers),
     /// Sent when Ctr+R/Apple+R is called to reload the current page.
     Reload(TopLevelBrowsingContextId),
 }
@@ -100,7 +100,7 @@ impl Debug for WindowEvent {
             WindowEvent::ResetZoom => write!(f, "ResetZoom"),
             WindowEvent::Navigation(..) => write!(f, "Navigation"),
             WindowEvent::Quit => write!(f, "Quit"),
-            WindowEvent::Reload => write!(f, "Reload"),
+            WindowEvent::Reload(..) => write!(f, "Reload"),
         }
     }
 }
