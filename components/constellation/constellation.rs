@@ -1001,7 +1001,7 @@ impl<Message, LTF, STF> Constellation<Message, LTF, STF>
 
         let source_is_top_level_pipeline = match self.browsing_contexts.get(&BrowsingContextId::from(source_top_ctx_id)) {
             Some(ctx) => ctx.pipeline_id == source_pipeline_id,
-            None => return warn!("ScriptMsg from closed browsing context {}", source_top_ctx_id)
+            None => false, // FIXME: when does that happen? Not attached yet?
         };
 
         match content {
