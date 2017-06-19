@@ -81,7 +81,7 @@ use script_runtime::{CommonScriptMsg, ScriptChan, ScriptPort, ScriptThreadEventC
 use script_thread::{ImageCacheMsg, MainThreadScriptChan, MainThreadScriptMsg, Runnable};
 use script_thread::{RunnableWrapper, ScriptThread, SendableMainThreadScriptChan};
 use script_traits::{ConstellationControlMsg, DocumentState, LoadData, MozBrowserEvent};
-use script_traits::{ScriptMsg as ConstellationMsg, ScrollState, TimerEvent, TimerEventId};
+use script_traits::{ScriptToConstellationChan, ScriptMsg, ScrollState, TimerEvent, TimerEventId};
 use script_traits::{TimerSchedulerMsg, UntrustedNodeAddress, WindowSizeData, WindowSizeType};
 use script_traits::webdriver_msg::{WebDriverJSError, WebDriverJSResult};
 use selectors::attr::CaseSensitivity;
@@ -512,8 +512,8 @@ impl WindowMethods for Window {
         let (sender, receiver) = ipc::channel().unwrap();
         let global_scope = self.upcast::<GlobalScope>();
         global_scope
-            .constellation_chan()
-            .send(ConstellationMsg::Alert(global_scope.pipeline_id(), s.to_string(), sender))
+            .script_to_constellation_chan()
+            .send(ScriptMsg::Alert(s.to_string(), sender))
             .unwrap();
 
         let should_display_alert_dialog = receiver.recv().unwrap();
@@ -920,8 +920,8 @@ impl WindowMethods for Window {
         //TODO determine if this operation is allowed
         let size = Size2D::new(x.to_u32().unwrap_or(1), y.to_u32().unwrap_or(1));
         self.upcast::<GlobalScope>()
-            .constellation_chan()
-            .send(ConstellationMsg::ResizeTo(size))
+            .script_to_constellation_chan()
+            .send(ScriptMsg::ResizeTo(size))
             .unwrap()
     }
 
@@ -938,8 +938,8 @@ impl WindowMethods for Window {
         //TODO determine if this operation is allowed
         let point = Point2D::new(x, y);
         self.upcast::<GlobalScope>()
-            .constellation_chan()
-            .send(ConstellationMsg::MoveTo(point))
+            .script_to_constellation_chan()
+            .send(ScriptMsg::MoveTo(point))
             .unwrap()
     }
 
@@ -1161,8 +1161,8 @@ impl Window {
         self.update_viewport_for_scroll(x, y);
 
         let global_scope = self.upcast::<GlobalScope>();
-        let message = ConstellationMsg::ScrollFragmentPoint(scroll_root_id, point, smooth);
-        global_scope.constellation_chan().send(message).unwrap();
+        let message = ScriptMsg::ScrollFragmentPoint(scroll_root_id, point, smooth);
+        global_scope.script_to_constellation_chan().send(message).unwrap();
     }
 
     pub fn update_viewport_for_scroll(&self, x: f32, y: f32) {
@@ -1174,8 +1174,8 @@ impl Window {
     pub fn client_window(&self) -> (Size2D<u32>, Point2D<i32>) {
         let (send, recv) = ipc::channel::<(Size2D<u32>, Point2D<i32>)>().unwrap();
         self.upcast::<GlobalScope>()
-            .constellation_chan()
-            .send(ConstellationMsg::GetClientWindow(send))
+            .script_to_constellation_chan()
+            .send(ScriptMsg::GetClientWindow(send))
             .unwrap();
         recv.recv().unwrap_or((Size2D::zero(), Point2D::zero()))
     }
@@ -1373,8 +1373,8 @@ impl Window {
             let pending_images = self.pending_layout_images.borrow().is_empty();
             if ready_state == DocumentReadyState::Complete && !reftest_wait && pending_images {
                 let global_scope = self.upcast::<GlobalScope>();
-                let event = ConstellationMsg::SetDocumentState(global_scope.pipeline_id(), DocumentState::Idle);
-                global_scope.constellation_chan().send(event).unwrap();
+                let event = ScriptMsg::SetDocumentState(DocumentState::Idle);
+                global_scope.script_to_constellation_chan().send(event).unwrap();
             }
         }
 
@@ -1792,7 +1792,7 @@ impl Window {
                mem_profiler_chan: MemProfilerChan,
                time_profiler_chan: TimeProfilerChan,
                devtools_chan: Option<IpcSender<ScriptToDevtoolsControlMsg>>,
-               constellation_chan: IpcSender<ConstellationMsg>,
+               constellation_chan: ScriptToConstellationChan,
                control_chan: IpcSender<ConstellationControlMsg>,
                scheduler_chan: IpcSender<TimerSchedulerMsg>,
                timer_event_chan: IpcSender<TimerEvent>,
