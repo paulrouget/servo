@@ -515,10 +515,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             }
 
             (Msg::AllowNavigation(top_level_browsing_context_id, url, response_chan), ShutdownState::NotShuttingDown) => {
-                let allow = self.window.allow_navigation(top_level_browsing_context_id, url);
-                if let Err(e) = response_chan.send(allow) {
-                    warn!("Failed to send allow_navigation result ({}).", e);
-                }
+                self.window.allow_navigation(top_level_browsing_context_id, url, response_chan);
             }
 
             (Msg::DelayedCompositionTimeout(timestamp), ShutdownState::NotShuttingDown) => {
