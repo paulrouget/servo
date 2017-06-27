@@ -247,6 +247,10 @@ impl<Window> Servo<Window> where Window: WindowMethods + 'static {
         receiver.recv().map_err(|_| ())
     }
 
+    pub fn select_browser(&self, id: BrowserId) {
+        self.constellation_chan.send(ConstellationMsg::SelectBrowser(id));
+    }
+
     pub fn handle_events(&mut self, events: Vec<WindowEvent>) -> bool {
         self.compositor.handle_events(events)
     }
