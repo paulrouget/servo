@@ -7,7 +7,7 @@
 use compositing::compositor_thread::EventLoopWaker;
 use compositing::windowing::{AnimationState, MouseWindowEvent, WindowEvent};
 use compositing::windowing::{WebRenderDebugOption, WindowMethods};
-use euclid::{Point2D, Size2D, TypedPoint2D, TypedVector2D, TypedScale, TypedSize2D};
+use euclid::{Point2D, TypedPoint2D, TypedVector2D, TypedScale, TypedSize2D};
 #[cfg(target_os = "windows")]
 use gdi32;
 use gleam::gl;
@@ -173,7 +173,7 @@ enum WindowKind {
 /// The type of a window.
 pub struct Window {
     kind: WindowKind,
-    screen: Size2D<u32>,
+    screen: TypedSize2D<u32, DeviceIndependentPixel>,
 
     mouse_down_button: Cell<Option<glutin::MouseButton>>,
     mouse_down_point: Cell<Point2D<i32>>,
@@ -230,12 +230,12 @@ impl Window {
 
         let screen;
         let window_kind = if opts::get().headless {
-            screen = Size2D::new(width, height);
+            screen = TypedSize2D::new(width, height);
             WindowKind::Headless(HeadlessContext::new(width, height))
         } else {
             let events_loop = glutin::EventsLoop::new();
             let (screen_width, screen_height) = events_loop.get_primary_monitor().get_dimensions();
-            screen = Size2D::new(screen_width, screen_height);
+            screen = TypedSize2D::new(screen_width, screen_height);
             let mut window_builder = glutin::WindowBuilder::new()
                 .with_title("Servo".to_string())
                 .with_decorations(!opts::get().no_native_titlebar)
@@ -861,8 +861,8 @@ impl WindowMethods for Window {
         DeviceUintRect::new(origin, size)
     }
 
-    fn size(&self) -> TypedSize2D<f32, DeviceIndependentPixel> {
-        match self.kind {
+    fn size(&self) -> TypedSize2D<f32, DevicePixel> {
+        let size: TypedSize2D<f32, DeviceIndependentPixel> = match self.kind {
             WindowKind::Window(ref window, ..) => {
                 // TODO(ajeffrey): can this fail?
                 let (width, height) = window.get_inner_size().expect("Failed to get window inner size.");
@@ -871,33 +871,36 @@ impl WindowMethods for Window {
             WindowKind::Headless(ref context) => {
                 TypedSize2D::new(context.width as f32, context.height as f32)
             }
-        }
+        };
+        size * self.hidpi_factor()
     }
 
-    fn client_window(&self, _: BrowserId) -> (Size2D<u32>, Point2D<i32>) {
-        match self.kind {
+    fn client_window(&self, _: BrowserId) -> (TypedSize2D<usize, DevicePixel>, TypedPoint2D<i32, DevicePixel>) {
+        let (size, point) = match self.kind {
             WindowKind::Window(ref window, ..) => {
                 // TODO(ajeffrey): can this fail?
                 let (width, height) = window.get_outer_size().expect("Failed to get window outer size.");
-                let size = Size2D::new(width, height);
+                let size = TypedSize2D::new(width as f32, height as f32);
                 // TODO(ajeffrey): can this fail?
                 let (x, y) = window.get_position().expect("Failed to get window position.");
-                let origin = Point2D::new(x as i32, y as i32);
+                let origin = TypedPoint2D::new(x as f32, y as f32);
                 (size, origin)
             }
             WindowKind::Headless(ref context) => {
-                let size = TypedSize2D::new(context.width, context.height);
-                (size, Point2D::zero())
+                let size = TypedSize2D::new(context.width as f32, context.height as f32);
+                let origin = TypedPoint2D::zero();
+                (size, origin)
             }
-        }
-
+        };
+        let dpr = self.hidpi_factor();
+        ((size * dpr).to_usize(), (point * dpr).to_i32())
     }
 
-    fn screen_size(&self, _: BrowserId) -> Size2D<u32> {
-        self.screen
+    fn screen_size(&self, _: BrowserId) -> TypedSize2D<usize, DevicePixel> {
+        (self.screen.to_f32() * self.hidpi_factor()).to_usize()
     }
 
-    fn screen_avail_size(&self, browser_id: BrowserId) -> Size2D<u32> {
+    fn screen_avail_size(&self, browser_id: BrowserId) -> TypedSize2D<usize, DevicePixel> {
         // FIXME: Glutin doesn't have API for available size. Fallback to screen size
         self.screen_size(browser_id)
     }
@@ -906,19 +909,21 @@ impl WindowMethods for Window {
         self.animation_state.set(state);
     }
 
-    fn set_inner_size(&self, _: BrowserId, size: Size2D<u32>) {
+    fn set_inner_size(&self, _: BrowserId, size: TypedSize2D<usize, DevicePixel>) {
         match self.kind {
             WindowKind::Window(ref window, ..) => {
+                let size = size.to_f32() / self.hidpi_factor();
                 window.set_inner_size(size.width as u32, size.height as u32)
             }
             WindowKind::Headless(..) => {}
         }
     }
 
-    fn set_position(&self, _: BrowserId, point: Point2D<i32>) {
+    fn set_position(&self, _: BrowserId, point: TypedPoint2D<i32, DevicePixel>) {
         match self.kind {
             WindowKind::Window(ref window, ..) => {
-                window.set_position(point.x, point.y)
+                let point = point.to_f32() / self.hidpi_factor();
+                window.set_position(point.x as i32, point.y as i32)
             }
             WindowKind::Headless(..) => {}
         }
