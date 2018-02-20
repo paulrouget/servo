@@ -135,8 +135,6 @@ pub enum ScriptMsg {
     SetTitle(Option<String>),
     /// Send a key event
     SendKeyEvent(Option<char>, Key, KeyState, KeyModifiers),
-    /// Get Window Informations size and position
-    GetClientWindow(IpcSender<(TypedSize2D<usize, DevicePixel>, TypedPoint2D<i32, DevicePixel>)>),
     /// Move the window to a point
     MoveTo(TypedPoint2D<i32, DevicePixel>),
     /// Resize the window to size
@@ -153,7 +151,9 @@ pub enum ScriptMsg {
     /// Store the data required to activate a service worker for the given scope
     RegisterServiceWorker(ScopeThings, ServoUrl),
     /// Enter or exit fullscreen
-    SetFullscreenState(bool),
+    SetFullscreenState(bool), // FIXME: store this in embedder coordinates as well
+    /// Get Window Informations size and position
+    GetClientWindow(IpcSender<(TypedSize2D<usize, DevicePixel>, TypedPoint2D<i32, DevicePixel>)>),
     /// Get the screen size (pixel)
     GetScreenSize(IpcSender<(TypedSize2D<usize, DevicePixel>)>),
     /// Get the available screen size (pixel)
