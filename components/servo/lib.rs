@@ -372,6 +372,14 @@ impl<Window> Servo<Window> where Window: WindowMethods + 'static {
 
                 (_, ShutdownState::ShuttingDown) => {},
 
+                (EmbedderMsg::KeyEvent(top_level_browsing_context, ch, key, state, modified),
+                 ShutdownState::NotShuttingDown) => {
+                    if state == KeyState::Pressed {
+                        let msg = EmbedderMsg::KeyEvent(top_level_browsing_context, ch, key, state, modified);
+                        self.embedder_events.push(msg);
+                    }
+                },
+
                 (msg, ShutdownState::NotShuttingDown) => {
                     self.embedder_events.push(msg);
                 },
@@ -396,11 +404,6 @@ impl<Window> Servo<Window> where Window: WindowMethods + 'static {
                 //     self.compositor.window.allow_navigation(top_level_browsing_context, url, response_chan);
                 // },
 
-                // (EmbedderMsg::KeyEvent(top_level_browsing_context, ch, key, state, modified), ShutdownState::NotShuttingDown) => {
-                //     if state == KeyState::Pressed {
-                //         self.compositor.window.handle_key(top_level_browsing_context, ch, key, modified);
-                //     }
-                // },
                 // (EmbedderMsg::SetCursor(cursor), ShutdownState::NotShuttingDown) => {
                 //     self.compositor.window.set_cursor(cursor)
                 // },
@@ -434,7 +437,7 @@ impl<Window> Servo<Window> where Window: WindowMethods + 'static {
         ::std::mem::replace(&mut self.embedder_events, Vec::new())
     }
 
-    pub fn handle_events(&mut self, events: Vec<WindowEvent>) -> bool {
+    pub fn handle_events(&mut self, events: Vec<WindowEvent>) {
         if self.compositor.receive_messages() {
             self.receive_messages();
         }
@@ -443,8 +446,9 @@ impl<Window> Servo<Window> where Window: WindowMethods + 'static {
         }
         if self.compositor.shutdown_state != ShutdownState::FinishedShuttingDown {
             self.compositor.perform_updates();
+        } else {
+            self.embedder_events.push(EmbedderMsg::Shutdown);
         }
-        self.compositor.shutdown_state != ShutdownState::FinishedShuttingDown
     }
 
     pub fn repaint_synchronously(&mut self) {
