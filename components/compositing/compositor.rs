@@ -974,6 +974,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
                     let cursor = webrender_api::WorldPoint::from_untyped(&cursor);
                     let mut txn = webrender_api::Transaction::new();
                     txn.scroll(location, cursor, combined_event.phase);
+                    txn.set_pinch_zoom(webrender_api::ZoomFactor::new(combined_event.magnification));
                     self.webrender_api.send_transaction(self.webrender_document, txn);
                     last_combined_event = None
                 }
@@ -1031,6 +1032,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             let cursor = webrender_api::WorldPoint::from_untyped(&cursor);
             let mut txn = webrender_api::Transaction::new();
             txn.scroll(scroll_location, cursor, combined_event.phase);
+            txn.set_pinch_zoom(webrender_api::ZoomFactor::new(combined_event.magnification));
             self.webrender_api.send_transaction(self.webrender_document, txn);
             self.waiting_for_results_of_scroll = true
         }
