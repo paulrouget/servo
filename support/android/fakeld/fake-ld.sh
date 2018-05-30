@@ -24,15 +24,8 @@ call_gcc()
     fi
   done
 
-  ANDROID_CPU_ARCH_DIR=$4
-  ANDROID_CXX_LIBS="${ANDROID_NDK}/sources/cxx-stl/llvm-libc++/libs/${ANDROID_CPU_ARCH_DIR}"
-
   echo "toolchain: ${ANDROID_TOOLCHAIN}"
-  echo "libs dir: ${ANDROID_CXX_LIBS}"
   echo "sysroot: ${ANDROID_SYSROOT}"
-  echo "targetdir: ${ANDROID_CXX_LIBS}"
 
-  "${ANDROID_TOOLCHAIN}/${_ANDROID_EABI}-gcc" \
-    --sysroot="${ANDROID_SYSROOT}" -L "${ANDROID_CXX_LIBS}" ${_GCC_PARAMS} -lc++ \
-    -o "${TARGET_DIR}/libservo.so" -shared && touch "${TARGET_DIR}/servo"
+  "${ANDROID_TOOLCHAIN}/${_ANDROID_EABI}-gcc" --sysroot="${ANDROID_SYSROOT}"  ${_GCC_PARAMS}
 }
