@@ -33,7 +33,7 @@ where
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub fn Java_com_mozilla_servo_NativeServo_version(env: JNIEnv, _class: JClass) -> jstring {
+pub fn Java_com_mozilla_servoview_NativeServo_version(env: JNIEnv, _class: JClass) -> jstring {
     let v = glue::servo_version();
     let output = env.new_string(format!("Servo Version: {}", v))
         .expect("Couldn't create java string");
@@ -42,7 +42,7 @@ pub fn Java_com_mozilla_servo_NativeServo_version(env: JNIEnv, _class: JClass) -
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub fn Java_com_mozilla_servo_NativeServo_init(
+pub fn Java_com_mozilla_servoview_NativeServo_init(
     env: JNIEnv,
     _: JClass,
     url: JString,
@@ -85,7 +85,7 @@ pub fn Java_com_mozilla_servo_NativeServo_init(
 /// Needs to be called from the EGL thread
 #[no_mangle]
 #[allow(non_snake_case)]
-pub fn Java_com_mozilla_servo_NativeServo_resize(
+pub fn Java_com_mozilla_servoview_NativeServo_resize(
     env: JNIEnv,
     _: JClass,
     width: jint,
@@ -99,7 +99,7 @@ pub fn Java_com_mozilla_servo_NativeServo_resize(
 /// everytime wakeup is called.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub fn Java_com_mozilla_servo_NativeServo_performUpdates(env: JNIEnv, _class: JClass) {
+pub fn Java_com_mozilla_servoview_NativeServo_performUpdates(env: JNIEnv, _class: JClass) {
     debug!("performUpdates");
     call(env, |s| {
         s.perform_updates().and_then(|_| s.handle_servo_events())
@@ -109,7 +109,7 @@ pub fn Java_com_mozilla_servo_NativeServo_performUpdates(env: JNIEnv, _class: JC
 /// Load an URL. This needs to be a valid url.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub fn Java_com_mozilla_servo_NativeServo_loadUri(env: JNIEnv, _class: JClass, url: JString) {
+pub fn Java_com_mozilla_servoview_NativeServo_loadUri(env: JNIEnv, _class: JClass, url: JString) {
     debug!("loadUri");
     let url: String = env.get_string(url).unwrap().into();
     call(env, |s| s.load_uri(&url));
@@ -118,28 +118,28 @@ pub fn Java_com_mozilla_servo_NativeServo_loadUri(env: JNIEnv, _class: JClass, u
 /// Reload page.
 #[no_mangle]
 #[allow(non_snake_case)]
-pub fn Java_com_mozilla_servo_NativeServo_reload(env: JNIEnv, _class: JClass) {
+pub fn Java_com_mozilla_servoview_NativeServo_reload(env: JNIEnv, _class: JClass) {
     debug!("reload");
     call(env, |s| s.reload());
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub fn Java_com_mozilla_servo_NativeServo_goBack(env: JNIEnv, _class: JClass) {
+pub fn Java_com_mozilla_servoview_NativeServo_goBack(env: JNIEnv, _class: JClass) {
     debug!("goBack");
     call(env, |s| s.go_back());
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub fn Java_com_mozilla_servo_NativeServo_goForward(env: JNIEnv, _class: JClass) {
+pub fn Java_com_mozilla_servoview_NativeServo_goForward(env: JNIEnv, _class: JClass) {
     debug!("goForward");
     call(env, |s| s.go_forward());
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub fn Java_com_mozilla_servo_NativeServo_scroll(
+pub fn Java_com_mozilla_servoview_NativeServo_scroll(
     env: JNIEnv,
     _: JClass,
     dx: jint,
@@ -156,7 +156,7 @@ pub fn Java_com_mozilla_servo_NativeServo_scroll(
 
 #[no_mangle]
 #[allow(non_snake_case)]
-pub fn Java_com_mozilla_servo_NativeServo_click(env: JNIEnv, _: JClass, x: jint, y: jint) {
+pub fn Java_com_mozilla_servoview_NativeServo_click(env: JNIEnv, _: JClass, x: jint, y: jint) {
     debug!("click");
     call(env, |s| s.click(x as u32, y as u32));
 }

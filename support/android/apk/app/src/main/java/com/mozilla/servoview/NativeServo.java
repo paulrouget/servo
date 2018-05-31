@@ -1,4 +1,4 @@
-package com.mozilla.servo;
+package com.mozilla.servoview;
 
 public class NativeServo {
     private static final String LOGTAG = "java::ServoView::LibServo";
