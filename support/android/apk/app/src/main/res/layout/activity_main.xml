@@ -23,40 +23,51 @@
 
             <Button
                 android:id="@+id/backbutton"
+                style="@android:style/Widget.Material.Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="B" />
+                android:text="Back"
+                android:textSize="10sp" />
 
             <Button
                 android:id="@+id/forwardbutton"
+                style="@android:style/Widget.Material.Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="F" />
+                android:text="Fwd"
+                android:textSize="10sp" />
 
             <EditText
                 android:id="@+id/editText"
+                style="@android:style/Widget.Material.EditText"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:ems="10"
                 android:hint="URL (strict)"
-                android:inputType="textUri" />
+                android:inputType="textUri"
+                android:selectAllOnFocus="true"
+                android:singleLine="true" />
 
             <Button
                 android:id="@+id/stopbutton"
+                style="@android:style/Widget.Material.Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="S" />
+                android:text="Stop"
+                android:textSize="10sp" />
 
             <Button
                 android:id="@+id/reloadbutton"
+                style="@android:style/Widget.Material.Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="R" />
+                android:text="Rld"
+                android:textSize="10sp" />
 
         </LinearLayout>
 
