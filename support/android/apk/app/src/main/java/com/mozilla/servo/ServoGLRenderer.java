@@ -1,4 +1,4 @@
-package org.mozilla.servo;
+package com.mozilla.servo;
 
 import android.opengl.GLES31;
 import android.opengl.GLSurfaceView;

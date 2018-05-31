@@ -1,4 +1,4 @@
-package org.mozilla.servo;
+package com.mozilla.servo;
 
 import android.app.Activity;
 import android.os.Bundle;

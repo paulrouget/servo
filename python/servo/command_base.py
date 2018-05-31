@@ -330,15 +330,26 @@ class CommandBase(object):
         else:
             return path.join(self.context.topdir, "target")
 
+    def get_apk_path(self, release):
+        base_path = self.get_target_dir()
+        base_path = path.join(base_path, self.config["android"]["target"])
+        apk_name = "servo.apk"
+        if release:
+            return path.join(base_path, "release", apk_name)
+        else:
+            return path.join(base_path, "debug", apk_name)
+
     def get_binary_path(self, release, dev, android=False):
         # TODO(autrilla): this function could still use work - it shouldn't
         # handle quitting, or printing. It should return the path, or an error.
         base_path = self.get_target_dir()
 
+        binary_name = "servo" + BIN_SUFFIX
+
         if android:
             base_path = path.join(base_path, self.config["android"]["target"])
+            binary_name = "libservojni.so"
 
-        binary_name = "servo" + BIN_SUFFIX
         release_path = path.join(base_path, "release", binary_name)
         dev_path = path.join(base_path, "debug", binary_name)
 
