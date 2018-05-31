@@ -3,7 +3,7 @@ linker = "./support/android/fakeld/fake-ld-arm.sh"
 ar = "arm-linux-androideabi-ar"
 
 [target.armv7-linux-androideabi]
-linker = "./support/android/fakeld/fake-ld-arm.sh"
+linker = "./support/android/fakeld/fake-ld-armv7.sh"
 ar = "arm-linux-androideabi-ar"
 
 [target.aarch64-linux-android]
