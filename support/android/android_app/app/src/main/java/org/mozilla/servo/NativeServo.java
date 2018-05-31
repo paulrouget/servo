@@ -19,9 +19,10 @@ public class NativeServo {
     public native void click(int x, int y);
 
     public NativeServo() {
-        // System.loadLibrary("c++_shared");
         // FIXME: don't forget to strip the binary
         // FIXME: copy assets and lib post build
+        // FIXME: see support/android/old_android_app/jni/Android.mk
+        System.loadLibrary("c++_shared");
         System.loadLibrary("servojni");
     }
 
