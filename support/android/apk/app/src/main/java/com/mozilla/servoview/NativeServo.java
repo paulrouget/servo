@@ -20,7 +20,7 @@ public class NativeServo {
     public NativeServo() {
         // FIXME: Are .so stripped?
         System.loadLibrary("c++_shared");
-        System.loadLibrary("servojni");
+        System.loadLibrary("simpleservo");
     }
 
     public interface ReadFileCallback {

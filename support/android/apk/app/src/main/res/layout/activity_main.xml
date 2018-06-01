@@ -71,8 +71,8 @@
 
         </LinearLayout>
 
-        <com.mozilla.servoview.ServoGLView
-            android:id="@+id/surfaceView"
+        <com.mozilla.servoview.ServoView
+            android:id="@+id/servoView"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 

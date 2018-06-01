@@ -118,7 +118,6 @@ pub fn Java_com_mozilla_servoview_NativeServo_loadUri(env: JNIEnv, _class: JClas
     call(env, |s| s.load_uri(&url));
 }
 
-/// Reload page.
 #[no_mangle]
 #[allow(non_snake_case)]
 pub fn Java_com_mozilla_servoview_NativeServo_reload(env: JNIEnv, _class: JClass) {

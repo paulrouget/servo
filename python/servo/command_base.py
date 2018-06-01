@@ -348,7 +348,7 @@ class CommandBase(object):
 
         if android:
             base_path = path.join(base_path, self.config["android"]["target"])
-            binary_name = "libservojni.so"
+            binary_name = "libsimpleservo.so"
 
         release_path = path.join(base_path, "release", binary_name)
         dev_path = path.join(base_path, "debug", binary_name)

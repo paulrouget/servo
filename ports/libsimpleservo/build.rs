@@ -12,7 +12,9 @@ use std::fs::File;
 
 fn main() {
     // FIXME: what if not Android?
+
     println!("cargo:rerun-if-changed=build.rs");
+
     // Generate EGL bindings
     let dest = env::var("OUT_DIR").unwrap();
     let mut file = File::create(&Path::new(&dest).join("egl_bindings.rs")).unwrap();

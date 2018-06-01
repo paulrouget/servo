@@ -8,8 +8,8 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class ServoGLRenderer implements GLSurfaceView.Renderer {
 
-    public final ServoGLView mView;
-    public ServoGLRenderer(ServoGLView view) {
+    public final ServoView mView;
+    public ServoGLRenderer(ServoView view) {
         mView = view;
     }
 

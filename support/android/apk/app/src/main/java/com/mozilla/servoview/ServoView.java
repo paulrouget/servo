@@ -8,14 +8,14 @@ import android.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 
-public class ServoGLView extends GLSurfaceView {
+public class ServoView extends GLSurfaceView {
 
-    private static final String LOGTAG = "ServoGLView";
+    private static final String LOGTAG = "ServoView";
 
     private final ServoGLRenderer mRenderer;
     private final NativeServo mServo;
 
-    public ServoGLView(Context context, AttributeSet attrs) {
+    public ServoView(Context context, AttributeSet attrs) {
         super(context, attrs);
         setFocusable(true);
         setFocusableInTouchMode(true);
@@ -48,7 +48,6 @@ public class ServoGLView extends GLSurfaceView {
             });
         };
     }
-
 
     class ReadFileCallback implements NativeServo.ReadFileCallback {
         public byte[] readfile(String file) {
@@ -119,7 +118,6 @@ public class ServoGLView extends GLSurfaceView {
         };
     }
 
-
     public void onGLReady() {
         final WakeupCallback c1 = new WakeupCallback();
         final ReadFileCallback c2 = new ReadFileCallback();
@@ -132,6 +130,5 @@ public class ServoGLView extends GLSurfaceView {
                 mServo.init("https://servo.org", c1, c2, c3, width, height, showLogs);
             }
         });
-
     }
 }

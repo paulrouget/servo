@@ -1,5 +1,5 @@
 [package]
-name = "libservojni"
+name = "libsimpleservo"
 version = "0.0.1"
 build = "build.rs"
 authors = ["The Servo Project Developers"]
@@ -7,7 +7,7 @@ license = "MPL-2.0"
 publish = false
 
 [lib]
-name = "servojni"
+name = "simpleservo"
 crate-type = ["cdylib"]
 
 [dependencies]

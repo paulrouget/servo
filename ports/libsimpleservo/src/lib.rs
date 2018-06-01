@@ -11,6 +11,10 @@ extern crate servo;
 
 mod api;
 mod gl_glue;
-mod jniwrapper;
+mod jniapi;
 
-pub use jniwrapper::*;
+#[cfg(not(target_os = "android"))]
+pub use api::*;
+
+#[cfg(target_os = "android")]
+pub use jniapi::*;

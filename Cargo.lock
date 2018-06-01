@@ -1615,7 +1615,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "libservojni"
+name = "libsimpleservo"
 version = "0.0.1"
 dependencies = [
  "android_logger 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
