@@ -14,6 +14,7 @@ public class ServoView extends GLSurfaceView {
 
     private final ServoGLRenderer mRenderer;
     private final NativeServo mServo;
+    private Client mClient = null;
 
     public ServoView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -29,6 +30,14 @@ public class ServoView extends GLSurfaceView {
         setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
     }
 
+    public void reload() {
+        queueEvent(new Runnable() {
+            public void run() {
+                mServo.reload();
+            }
+        });
+    }
+
     public void onSurfaceResized(int width, int height) {
         Log.w(LOGTAG, "onViewResized()");
         queueEvent(new Runnable() {
@@ -37,6 +46,7 @@ public class ServoView extends GLSurfaceView {
             }
         });
     }
+
 
     class WakeupCallback implements NativeServo.WakeupCallback {
         public void wakeup(){
@@ -74,43 +84,53 @@ public class ServoView extends GLSurfaceView {
         };
         public void onLoadStarted() {
             Log.w(LOGTAG, "ServoCallback::onLoadStarted()");
-            post(new Runnable() {
-                public void run() {
-                    // FIXME: send event or something
-                }
-            });
+            if (mClient != null) {
+                post(new Runnable() {
+                    public void run() {
+                        mClient.onLoadStarted();
+                    }
+                });
+            }
         };
         public void onLoadEnded() {
             Log.w(LOGTAG, "ServoCallback::onLoadEnded()");
-            post(new Runnable() {
-                public void run() {
-                    // FIXME: send event or something
-                }
-            });
+            if (mClient != null) {
+                post(new Runnable() {
+                    public void run() {
+                        mClient.onLoadEnded();
+                    }
+                });
+            }
         };
         public void onTitleChanged(final String title) {
             Log.w(LOGTAG, "ServoCallback::onTitleChanged(" + title + ")");
-            post(new Runnable() {
-                public void run() {
-                    // FIXME: send event or something
-                }
-            });
+            if (mClient != null) {
+                post(new Runnable() {
+                    public void run() {
+                        mClient.onTitleChanged(title);
+                    }
+                });
+            }
         };
         public void onUrlChanged(final String url) {
             Log.w(LOGTAG, "ServoCallback::onUrlChanged(" + url + ")");
-            post(new Runnable() {
-                public void run() {
-                    // FIXME: send event or something
-                }
-            });
+            if (mClient != null) {
+                post(new Runnable() {
+                    public void run() {
+                        mClient.onUrlChanged(url);
+                    }
+                });
+            }
         };
         public void onHistoryChanged(final boolean canGoBack, final boolean canGoForward) {
             Log.w(LOGTAG, "ServoCallback::onHistoryChanged()");
-            post(new Runnable() {
-                public void run() {
-                    // FIXME: send event or something
-                }
-            });
+            if (mClient != null) {
+                post(new Runnable() {
+                    public void run() {
+                        mClient.onHistoryChanged(canGoBack, canGoForward);
+                    }
+                });
+            }
         };
         public void onAnimatingChanged(final boolean animating) {
             Log.w(LOGTAG, "ServoCallback::onAnimatingChanged()");
@@ -131,4 +151,18 @@ public class ServoView extends GLSurfaceView {
             }
         });
     }
+
+    public interface Client {
+        void onLoadStarted();
+        void onLoadEnded();
+        void onTitleChanged(String title);
+        void onUrlChanged(String url);
+        void onHistoryChanged(boolean canGoBack, boolean canGoForward);
+    }
+
+    public void setClient(Client client) {
+        mClient = client;
+    }
+
+
 }
