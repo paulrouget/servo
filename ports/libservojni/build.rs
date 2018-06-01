@@ -11,11 +11,9 @@ use gl_generator::{Api, Fallbacks, Profile, Registry, StaticStructGenerator};
 use std::fs::File;
 
 fn main() {
-    // FIXME: if not Android, crash
-
+    // FIXME: what if not Android?
     println!("cargo:rerun-if-changed=build.rs");
-
-    // Generate GL bindings
+    // Generate EGL bindings
     let dest = env::var("OUT_DIR").unwrap();
     let mut file = File::create(&Path::new(&dest).join("egl_bindings.rs")).unwrap();
     Registry::new(Api::Egl, (1, 5), Profile::Core, Fallbacks::All, [])

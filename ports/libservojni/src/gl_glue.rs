@@ -9,8 +9,6 @@ extern crate winapi;
 #[allow(non_camel_case_types)]
 pub mod egl {
 
-    // From glutin
-
     use libc;
     use servo::gl;
     use std::ffi::CString;

@@ -1,13 +1,12 @@
 package com.mozilla.servoview;
 
 public class NativeServo {
-    private static final String LOGTAG = "java::ServoView::LibServo";
     public native String version();
     public native void init(String url,
                             WakeupCallback wakeup,
                             ReadFileCallback readfile,
                             ServoCallbacks callbacks,
-                            int width, int height);
+                            int width, int height, boolean log);
     public native void performUpdates();
     public native void resize(int width, int height);
     public native void reload();
@@ -19,9 +18,7 @@ public class NativeServo {
     public native void click(int x, int y);
 
     public NativeServo() {
-        // FIXME: don't forget to strip the binary
-        // FIXME: copy assets and lib post build
-        // FIXME: see support/android/old_android_app/jni/Android.mk
+        // FIXME: Are .so stripped?
         System.loadLibrary("c++_shared");
         System.loadLibrary("servojni");
     }
@@ -41,5 +38,6 @@ public class NativeServo {
         void onTitleChanged(String title);
         void onUrlChanged(String url);
         void onHistoryChanged(boolean canGoBack, boolean canGoForward);
+        void onAnimatingChanged(boolean animating);
     }
 }

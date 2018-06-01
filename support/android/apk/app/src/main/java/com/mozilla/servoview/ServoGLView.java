@@ -113,6 +113,10 @@ public class ServoGLView extends GLSurfaceView {
                 }
             });
         };
+        public void onAnimatingChanged(final boolean animating) {
+            Log.w(LOGTAG, "ServoCallback::onAnimatingChanged()");
+            // FIXME: use Choreagrapher
+        };
     }
 
 
@@ -120,11 +124,12 @@ public class ServoGLView extends GLSurfaceView {
         final WakeupCallback c1 = new WakeupCallback();
         final ReadFileCallback c2 = new ReadFileCallback();
         final ServoCallbacks c3 = new ServoCallbacks();
+        final boolean showLogs = true;
         queueEvent(new Runnable() {
             public void run() {
                 int width = getWidth();
                 int height = getHeight();
-                mServo.init("https://servo.org", c1, c2, c3, width, height);
+                mServo.init("https://servo.org", c1, c2, c3, width, height, showLogs);
             }
         });
 

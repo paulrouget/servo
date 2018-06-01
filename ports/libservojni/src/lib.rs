@@ -11,6 +11,6 @@ extern crate servo;
 
 mod api;
 mod gl_glue;
-mod glue;
+mod jniwrapper;
 
-pub use api::*;
+pub use jniwrapper::*;
