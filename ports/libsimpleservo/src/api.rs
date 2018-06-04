@@ -236,6 +236,7 @@ struct ServoCallbacks {
     waker: Box<EventLoopWaker>,
     gl: Rc<gl::Gl>,
     host_callbacks: Box<HostTrait>,
+    // FIXME: weird that we have that here.
     width: Cell<u32>,
     height: Cell<u32>,
 }

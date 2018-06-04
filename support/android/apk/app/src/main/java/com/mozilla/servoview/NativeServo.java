@@ -17,7 +17,7 @@ public class NativeServo {
     public native void scroll(int dx, int dy, int x, int y, int phase);
     public native void click(int x, int y);
 
-    public NativeServo() {
+    NativeServo() {
         // FIXME: Are .so stripped?
         System.loadLibrary("c++_shared");
         System.loadLibrary("simpleservo");

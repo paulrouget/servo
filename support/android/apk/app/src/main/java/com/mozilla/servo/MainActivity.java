@@ -1,8 +1,15 @@
 package com.mozilla.servo;
 
 import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.webkit.URLUtil;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
@@ -10,6 +17,8 @@ import android.widget.ProgressBar;
 import com.mozilla.servoview.ServoView;
 
 public class MainActivity extends Activity implements ServoView.Client {
+
+    private static final String LOGTAG = "MainActivity";
 
     ServoView mServoView;
     Button mBackButton;
@@ -36,11 +45,69 @@ public class MainActivity extends Activity implements ServoView.Client {
         mServoView.setClient(this);
         mBackButton.setEnabled(false);
         mFwdButton.setEnabled(false);
-        mProgressBar.setProgress(0);
+
+        mServoView.requestFocus();
+
+        Uri uri = getIntent().getData();
+        if (uri != null) {
+            //FIXME: start activity with " -d XXX" doesn't work. uri is always null.
+            mServoView.loadUri(uri);
+        }
+
+        setupUrlField();
+    }
+
+    protected void onNewIntent(Intent intent){
+        super.onNewIntent(intent);
+        Log.w(LOGTAG, "INTENT");
+    }
+
+    private void setupUrlField() {
+        mUrlField.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                loadUrlFromField();
+                mServoView.requestFocus();
+                return true;
+            }
+            return false;
+        });
+        mUrlField.setOnFocusChangeListener((v, hasFocus) -> {
+            if(v.getId() == R.id.urlfield && !hasFocus) {
+                InputMethodManager imm =  (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                assert imm != null;
+                imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+            }
+        });
+    }
+
+    private void loadUrlFromField() {
+        String text = mUrlField.getText().toString();
+        text = text.trim();
+        String uri;
+
+        if (text.contains(" ") || !text.contains(".")) {
+            uri =  URLUtil.composeSearchUrl(text, "https://duckduckgo.com/html/?q=%s", "%s");
+        } else {
+            uri = URLUtil.guessUrl(text);
+        }
+
+        mServoView.loadUri(Uri.parse(uri));
     }
 
     public void onReloadClicked(View v) {
         mServoView.reload();
+    }
+
+    public void onBackClicked(View v) {
+        mServoView.goBack();
+    }
+
+    public void onForwardClicked(View v) {
+        mServoView.goForward();
+    }
+
+    public void onStopClicked(View v) {
+        mServoView.stop();
     }
 
     @Override
