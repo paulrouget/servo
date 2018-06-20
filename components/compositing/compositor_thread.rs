@@ -18,7 +18,7 @@ use std::fmt::{Debug, Error, Formatter};
 use std::sync::mpsc::{Receiver, Sender};
 use style_traits::viewport::ViewportConstraints;
 use webrender;
-use webrender_api::{self, DeviceIntPoint, DeviceUintSize};
+use webrender_api::{self, DeviceIntPoint, DeviceUintSize, DocumentId};
 
 
 /// Sends messages to the compositor.
@@ -75,11 +75,11 @@ pub enum Msg {
     /// Alerts the compositor that the given pipeline has changed whether it is running animations.
     ChangeRunningAnimationsState(PipelineId, AnimationState),
     /// Replaces the current frame tree, typically called during main frame navigation.
-    SetFrameTree(SendableFrameTree),
+    SetFrameTree(DocumentId, SendableFrameTree),
     /// Composite.
     Recomposite(CompositingReason),
     /// Script has handled a touch event, and either prevented or allowed default actions.
-    TouchEventProcessed(EventResult),
+    TouchEventProcessed(PipelineId, EventResult),
     /// Composite to a PNG file and return the Image over a passed channel.
     CreatePng(IpcSender<Option<Image>>),
     /// Alerts the compositor that the viewport has been constrained in some manner
@@ -90,7 +90,7 @@ pub enum Msg {
     PipelineVisibilityChanged(PipelineId, bool),
     /// WebRender has successfully processed a scroll. The boolean specifies whether a composite is
     /// needed.
-    NewScrollFrameReady(bool),
+    NewScrollFrameReady(DocumentId, bool),
     /// A pipeline was shut down.
     // This message acts as a synchronization point between the constellation,
     // when it shuts down a pipeline, to the compositor; when the compositor
@@ -154,6 +154,5 @@ pub struct InitialCompositorState {
     pub mem_profiler_chan: mem::ProfilerChan,
     /// Instance of webrender API
     pub webrender: webrender::Renderer,
-    pub webrender_document: webrender_api::DocumentId,
     pub webrender_api: webrender_api::RenderApi,
 }

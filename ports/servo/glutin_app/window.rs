@@ -20,7 +20,7 @@ use servo::servo_config::opts;
 use servo::servo_geometry::DeviceIndependentPixel;
 use servo::style_traits::DevicePixel;
 use servo::style_traits::cursor::CursorKind;
-use servo::webrender_api::{DeviceIntPoint, DeviceUintRect, DeviceUintSize, ScrollLocation};
+use servo::webrender_api::{DeviceIntPoint, DeviceUintRect, DeviceUintSize, DocumentId, ScrollLocation};
 use std::cell::{Cell, RefCell};
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::ffi::CString;
@@ -157,6 +157,7 @@ pub struct Window {
     fullscreen: Cell<bool>,
     gl: Rc<gl::Gl>,
     suspended: Cell<bool>,
+    areas: RefCell<Vec<DocumentId>>,
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -279,11 +280,16 @@ impl Window {
             inner_size: Cell::new(inner_size),
             screen_size,
             suspended: Cell::new(false),
+            areas: RefCell::new(vec!()),
         };
 
         window.present();
 
         Rc::new(window)
+    }
+
+    pub fn register_area(&self, wrdoc: DocumentId) {
+        self.areas.borrow_mut().push(wrdoc);
     }
 
     pub fn get_events(&self) -> Vec<WindowEvent> {
@@ -486,7 +492,7 @@ impl Window {
             } => {
                 self.mouse_pos.set(TypedPoint2D::new(x as i32, y as i32));
                 self.event_queue.borrow_mut().push(
-                    WindowEvent::MouseWindowMoveEventClass(TypedPoint2D::new(x as f32, y as f32)));
+                    WindowEvent::MouseWindowMoveEventClass(self.areas.borrow()[0] /*FIXME*/, TypedPoint2D::new(x as f32, y as f32)));
             }
             Event::WindowEvent {
                 event: winit::WindowEvent::MouseWheel { delta, phase, .. },
@@ -506,7 +512,7 @@ impl Window {
 
                 let scroll_location = ScrollLocation::Delta(TypedVector2D::new(dx, dy));
                 let phase = winit_phase_to_touch_event_type(phase);
-                let event = WindowEvent::Scroll(scroll_location, self.mouse_pos.get(), phase);
+                let event = WindowEvent::Scroll(self.areas.borrow()[0]  /*FIXME*/, scroll_location, self.mouse_pos.get(), phase);
                 self.event_queue.borrow_mut().push(event);
             },
             Event::WindowEvent {
@@ -518,7 +524,7 @@ impl Window {
                 let phase = winit_phase_to_touch_event_type(touch.phase);
                 let id = TouchId(touch.id as i32);
                 let point = TypedPoint2D::new(touch.location.0 as f32, touch.location.1 as f32);
-                self.event_queue.borrow_mut().push(WindowEvent::Touch(phase, id, point));
+                self.event_queue.borrow_mut().push(WindowEvent::Touch(self.areas.borrow()[0]  /*FIXME*/, phase, id, point));
             }
             Event::WindowEvent {
                 event: winit::WindowEvent::Refresh,
@@ -588,7 +594,7 @@ impl Window {
                         let pixel_dist = ((pixel_dist.x * pixel_dist.x +
                                            pixel_dist.y * pixel_dist.y) as f32).sqrt();
                         if pixel_dist < max_pixel_dist {
-                            self.event_queue.borrow_mut().push(WindowEvent::MouseWindowEventClass(mouse_up_event));
+                            self.event_queue.borrow_mut().push(WindowEvent::MouseWindowEventClass(self.areas.borrow()[0] /*FIXME*/, mouse_up_event));
                             MouseWindowEvent::Click(MouseButton::Left, coords.to_f32())
                         } else {
                             mouse_up_event
@@ -598,7 +604,7 @@ impl Window {
                 }
             }
         };
-        self.event_queue.borrow_mut().push(WindowEvent::MouseWindowEventClass(event));
+        self.event_queue.borrow_mut().push(WindowEvent::MouseWindowEventClass(self.areas.borrow()[0] /*FIXME*/, event));
     }
 
     fn hidpi_factor(&self) -> TypedScale<f32, DeviceIndependentPixel, DevicePixel> {
@@ -700,10 +706,7 @@ impl WindowMethods for Window {
                 let (width, height) = window.get_inner_size().expect("Failed to get window inner size.");
                 let inner_size = (TypedSize2D::new(width as f32, height as f32) * dpr).to_u32();
 
-                let viewport = DeviceUintRect::new(TypedPoint2D::zero(), inner_size);
-
                 EmbedderCoordinates {
-                    viewport: viewport,
                     framebuffer: inner_size,
                     window: (win_size, win_origin),
                     screen: screen,
@@ -715,7 +718,6 @@ impl WindowMethods for Window {
             WindowKind::Headless(ref context) => {
                 let size = (TypedSize2D::new(context.width, context.height).to_f32() * dpr).to_u32();
                 EmbedderCoordinates {
-                    viewport: DeviceUintRect::new(TypedPoint2D::zero(), size),
                     framebuffer: size,
                     window: (size, TypedPoint2D::zero()),
                     screen: size,
@@ -729,6 +731,7 @@ impl WindowMethods for Window {
     fn present(&self) {
         match self.kind {
             WindowKind::Window(ref window, ..) => {
+                println!("swap buffers");
                 if let Err(err) = window.swap_buffers() {
                     warn!("Failed to swap window buffers ({}).", err);
                 }

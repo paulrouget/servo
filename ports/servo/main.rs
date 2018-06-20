@@ -53,6 +53,8 @@ use servo::config::servo_version;
 use servo::ipc_channel::ipc;
 use servo::servo_config::prefs::PREFS;
 use servo::servo_url::ServoUrl;
+use euclid::{Length, TypedPoint2D, TypedVector2D, TypedScale, TypedSize2D};
+use servo::webrender_api::DeviceUintRect;
 use std::env;
 use std::panic;
 use std::process;
@@ -162,7 +164,10 @@ fn main() {
 
     let window = glutin_app::create_window();
 
-    let mut browser = browser::Browser::new(window.clone());
+    let CHROME_HEIGHT = 88;
+
+    let mut servo = Servo::new(window.clone());
+    servo.setup_logging();
 
     // If the url is not provided, we fallback to the homepage in PREFS,
     // or a blank page in case the homepage is not set either.
@@ -171,18 +176,32 @@ fn main() {
     let pref_url = PREFS.get("shell.homepage").as_string()
         .and_then(|str| parse_url_or_filename(&cwd, str).ok());
     let blank_url = ServoUrl::parse("about:blank").ok();
-
     let target_url = cmdline_url.or(pref_url).or(blank_url).unwrap();
-
-    let mut servo = Servo::new(window.clone());
-
+    let coords0 = DeviceUintRect::new(TypedPoint2D::new(0,CHROME_HEIGHT), TypedSize2D::new(1024 * 2, 740 * 2 - CHROME_HEIGHT));
     let (sender, receiver) = ipc::channel().unwrap();
-    servo.handle_events(vec![WindowEvent::NewBrowser(target_url, sender)]);
+    servo.handle_events(vec![WindowEvent::NewArea(coords0, 0, sender)]);
+    let area0 = receiver.recv().unwrap();
+    window.register_area(area0);
+    let mut browser0 = browser::Browser::new(window.clone(), area0);
+    let (sender, receiver) = ipc::channel().unwrap();
+    servo.handle_events(vec![WindowEvent::NewBrowser(target_url, area0, sender)]);
     let browser_id = receiver.recv().unwrap();
-    browser.set_browser_id(browser_id);
     servo.handle_events(vec![WindowEvent::SelectBrowser(browser_id)]);
+    browser0.set_browser_id(browser_id);
 
-    servo.setup_logging();
+    // let target_url = ServoUrl::parse("file:///Users/paul/git/servo/resources/chrome/index.html").unwrap();
+    // let target_url = ServoUrl::parse("file:///tmp/b.html").unwrap();
+    // let coords1 = DeviceUintRect::new(TypedPoint2D::new(0,0), TypedSize2D::new(1024 * 2, CHROME_HEIGHT));
+    // let (sender, receiver) = ipc::channel().unwrap();
+    // servo.handle_events(vec![WindowEvent::NewArea(coords1, 1, sender)]);
+    // let area1 = receiver.recv().unwrap();
+    // window.register_area(area1);
+    // let mut browser1 = browser::Browser::new(window.clone(), area1);
+    // let (sender, receiver) = ipc::channel().unwrap();
+    // servo.handle_events(vec![WindowEvent::NewBrowser(target_url, area1, sender)]);
+    // let browser_id = receiver.recv().unwrap();
+    // servo.handle_events(vec![WindowEvent::SelectBrowser(browser_id)]);
+    // browser1.set_browser_id(browser_id);
 
     window.run(|| {
         let win_events = window.get_events();
@@ -194,15 +213,21 @@ fn main() {
             _ => false,
         });
 
-        browser.handle_window_events(win_events);
+        browser0.handle_window_events(win_events.clone()); // FIXME: clone :(
+        // browser1.handle_window_events(win_events);
 
         let mut servo_events = servo.get_events();
         loop {
-            browser.handle_servo_events(servo_events);
-            servo.handle_events(browser.get_events());
-            if browser.shutdown_requested() {
+            browser0.handle_servo_events(servo_events.clone()); // FIXME: clone :(
+            // browser1.handle_servo_events(servo_events);
+            servo.handle_events(browser0.get_events());
+            // servo.handle_events(browser1.get_events());
+            if browser0.shutdown_requested() {
                 return true;
             }
+            // if browser1.shutdown_requested() {
+            //     return true;
+            // }
             servo_events = servo.get_events();
             if servo_events.is_empty() {
                 break;

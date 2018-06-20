@@ -14,7 +14,7 @@ use servo::script_traits::TouchEventType;
 use servo::servo_config::opts;
 use servo::servo_config::prefs::PREFS;
 use servo::servo_url::ServoUrl;
-use servo::webrender_api::ScrollLocation;
+use servo::webrender_api::{DocumentId, ScrollLocation};
 use std::mem;
 use std::rc::Rc;
 #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
@@ -27,6 +27,7 @@ pub struct Browser {
     /// id of the top level browsing context. It is unique as tabs
     /// are not supported yet. None until created.
     browser_id: Option<BrowserId>,
+    wrid: DocumentId,
 
     title: Option<String>,
     status: Option<String>,
@@ -44,11 +45,12 @@ enum LoadingState {
 }
 
 impl Browser {
-    pub fn new(window: Rc<Window>) -> Browser {
+    pub fn new(window: Rc<Window>, wrid: DocumentId) -> Browser {
         Browser {
             title: None,
             current_url: None,
             browser_id: None,
+            wrid: wrid,
             status: None,
             favicon: None,
             loading_state: None,
@@ -171,19 +173,19 @@ impl Browser {
         match (mods, ch, key) {
             (_, Some('+'), _) => {
                 if mods & !KeyModifiers::SHIFT == CMD_OR_CONTROL {
-                    self.event_queue.push(WindowEvent::Zoom(1.1));
+                    self.event_queue.push(WindowEvent::Zoom(self.wrid, 1.1));
                 } else if mods & !KeyModifiers::SHIFT == CMD_OR_CONTROL | KeyModifiers::ALT {
-                    self.event_queue.push(WindowEvent::PinchZoom(1.1));
+                    self.event_queue.push(WindowEvent::PinchZoom(self.wrid, 1.1));
                 }
             }
             (CMD_OR_CONTROL, Some('-'), _) => {
-                self.event_queue.push(WindowEvent::Zoom(1.0 / 1.1));
+                self.event_queue.push(WindowEvent::Zoom(self.wrid, 1.0 / 1.1));
             }
             (_, Some('-'), _) if mods == CMD_OR_CONTROL | KeyModifiers::ALT => {
-                self.event_queue.push(WindowEvent::PinchZoom(1.0 / 1.1));
+                self.event_queue.push(WindowEvent::PinchZoom(self.wrid, 1.0 / 1.1));
             }
             (CMD_OR_CONTROL, Some('0'), _) => {
-                self.event_queue.push(WindowEvent::ResetZoom);
+                self.event_queue.push(WindowEvent::ResetZoom(self.wrid));
             }
 
             (KeyModifiers::NONE, None, Key::PageDown) => {
@@ -228,7 +230,7 @@ impl Browser {
     }
 
     fn scroll_window_from_key(&mut self, scroll_location: ScrollLocation, phase: TouchEventType) {
-        let event = WindowEvent::Scroll(scroll_location, TypedPoint2D::zero(), phase);
+        let event = WindowEvent::Scroll(self.wrid, scroll_location, TypedPoint2D::zero(), phase);
         self.event_queue.push(event);
     }
 

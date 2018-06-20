@@ -38,6 +38,7 @@ use msg::constellation_msg::TopLevelBrowsingContextId;
 use script_traits::{ConstellationControlMsg, LayoutControlMsg};
 use style_traits::CSSPixel;
 
+mod area;
 mod compositor;
 pub mod compositor_thread;
 #[cfg(feature = "gleam")]

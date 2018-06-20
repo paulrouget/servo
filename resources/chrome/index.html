@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf8">
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+      }
+      .tabs {
+        border-bottom: 1px solid black;
+        font-size: 0;
+        white-space: nowrap;
+        width: 100vw;
+        overflow: scroll;
+      }
+      .tab {
+        display: inline-block;
+        font-size: 12px;
+        line-height: 22px;
+        width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        border-right: 1px solid black;
+        text-align: center;
+        cursor: default;
+      }
+      .tab.selected {
+        background-color: #EEE;
+      }
+      .urlbar {
+        border-bottom: 1px solid black;
+        font-size: 0;
+        width: 100vw;
+      }
+      .button {
+        vertical-align: top;
+        width: 22px;
+        display: inline-block;
+        font-size: 12px;
+        line-height: 22px;
+        border-right: 1px solid black;
+        text-align: center;
+        cursor: default;
+      }
+      .urlbarinput {
+        font-size: 12px;
+        line-height: 22px;
+        padding: 0 5px;
+        width: calc(100vw - 3 * 22px);
+        margin: 0;
+        border: 0;
+      }
+      .button.disabled {
+        background-color: #DDD;
+        color: #666;
+      }
+      .reloadbutton.disabled, .stopbutton.disabled {
+        display: none;
+      }
+
+      .tab:focus,.button:focus,.urlbarinput:focus {
+        box-shadow: inset 0 0 0 2px #AAAADD;
+      }
+    </style>
+    <script>
+      const LOADING_STATE = {
+        CONNECTING: 0,
+        LOADING: 1,
+        LOADED: 2,
+      };
+      var state = {
+        selected: 1,
+        browsers: [
+          {
+            title: "title1",
+            loading_state: LOADING_STATE.LOADING,
+            favicon: "https://www.mozilla.org/favicon.ico",
+            url: "https://mozilla.org",
+            can_go_back: true,
+            can_go_forward: false,
+            secure: true,
+          },
+          {
+            title: "title2",
+            loading_state: LOADING_STATE.LOADED,
+            favicon: "https://www.mozilla.org/favicon.ico",
+            url: "https://servo.org",
+            can_go_back: false,
+            can_go_forward: false,
+            secure: true,
+          },
+          {
+            title: "title3",
+            loading_state: LOADING_STATE.LOADED,
+            favicon: "https://www.mozilla.org/favicon.ico",
+            url: "http://paulrouget.com",
+            can_go_back: false,
+            can_go_forward: false,
+            secure: false,
+          },
+          {
+            title: "title3",
+            loading_state: LOADING_STATE.LOADED,
+            favicon: "https://www.mozilla.org/favicon.ico",
+            url: "http://paulrouget.com",
+            can_go_back: false,
+            can_go_forward: false,
+            secure: false,
+          },
+          {
+            title: "title3",
+            loading_state: LOADING_STATE.LOADED,
+            favicon: "https://www.mozilla.org/favicon.ico",
+            url: "http://paulrouget.com",
+            can_go_back: false,
+            can_go_forward: false,
+            secure: false,
+          },
+          {
+            title: "title3",
+            loading_state: LOADING_STATE.LOADED,
+            favicon: "https://www.mozilla.org/favicon.ico",
+            url: "http://paulrouget.com",
+            can_go_back: false,
+            can_go_forward: false,
+            secure: false,
+          },
+          {
+            title: "title3",
+            loading_state: LOADING_STATE.LOADED,
+            favicon: "https://www.mozilla.org/favicon.ico",
+            url: "http://paulrouget.com",
+            can_go_back: false,
+            can_go_forward: false,
+            secure: false,
+          },
+          {
+            title: "title3",
+            loading_state: LOADING_STATE.LOADED,
+            favicon: "https://www.mozilla.org/favicon.ico",
+            url: "http://paulrouget.com",
+            can_go_back: false,
+            can_go_forward: false,
+            secure: false,
+          },
+          {
+            title: "title3",
+            loading_state: LOADING_STATE.LOADED,
+            favicon: "https://www.mozilla.org/favicon.ico",
+            url: "http://paulrouget.com",
+            can_go_back: false,
+            can_go_forward: false,
+            secure: false,
+          },
+        ]
+      };
+
+      function render() {
+        var tabs_html = "";
+        for (var i = 0; i < state.browsers.length; i++) {
+          var b = state.browsers[i];
+          var selected_class = i == state.selected ? "selected" : "";
+          tabs_html += `<div tabindex="0" class="tab ${selected_class}">${b.title}</div>`;
+        }
+        document.querySelector(".tabs").innerHTML = tabs_html;
+
+        var b = state.browsers[state.selected];
+        document.querySelector(".gobackbutton").classList.toggle("disabled", b.can_go_back);
+        document.querySelector(".goforwardbutton").classList.toggle("disabled", b.can_go_forward);
+        document.querySelector(".stopbutton").classList.toggle("disabled", b.loading_state == LOADING_STATE.LOADED);
+        document.querySelector(".reloadbutton").classList.toggle("disabled", b.loading_state != LOADING_STATE.LOADED);
+        document.querySelector(".urlbarinput").value = b.url;
+      }
+
+      window.addEventListener("load", render);
+
+/*
+      // Just to test
+      setInterval(() => {
+        state.selected = state.selected < state.browsers.length - 1 ? state.selected + 1 : 0;
+        render();
+      }, 1000);
+*/
+    </script>
+  </head>
+  <body>
+    <div class="tabs"></div>
+    <div class="urlbar">
+      <div tabindex="0" class="button gobackbutton">←</div>
+      <div tabindex="0" class="button goforwardbutton">→</div>
+      <div tabindex="0" class="button stopbutton">x</div>
+      <div tabindex="0" class="button reloadbutton">⟳</div>
+      <input class="urlbarinput" type="text"></input>
+    </div>
+  </body>
+</html>

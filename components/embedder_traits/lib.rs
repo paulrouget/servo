@@ -70,7 +70,7 @@ impl EmbedderReceiver {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub enum EmbedderMsg {
     /// A status message to be displayed by the browser chrome.
     Status(Option<String>),
