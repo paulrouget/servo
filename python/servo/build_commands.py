@@ -181,7 +181,6 @@ class MachCommands(CommandBase):
               debug_mozjs=False, params=None, with_debug_assertions=False):
 
         opts = params or []
-        opts += ["--manifest-path", self.servo_manifest()]
 
         if android is None:
             android = self.config["build"]["android"]
