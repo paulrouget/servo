@@ -6,7 +6,6 @@
 package com.mozilla.servoview;
 
 import android.app.Activity;
-import android.os.Build;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.net.Uri;
@@ -51,28 +50,52 @@ public class ServoView extends GLSurfaceView implements GestureDetector.OnGestur
     }
 
     public void reload() {
-        queueEvent(() -> mServo.reload());
+        queueEvent(new Runnable() {
+          public void run() {
+            mServo.reload();
+          }
+        });
     }
 
     public void goBack() {
-        queueEvent(() -> mServo.goBack());
+        queueEvent(new Runnable() {
+          public void run() {
+            mServo.goBack();
+          }
+        });
     }
 
     public void goForward() {
-        queueEvent(() -> mServo.goForward());
+        queueEvent(new Runnable() {
+          public void run() {
+            mServo.goForward();
+          }
+        });
     }
 
     public void stop() {
-        queueEvent(() -> mServo.stop());
+        queueEvent(new Runnable() {
+          public void run() {
+            mServo.stop();
+          }
+        });
     }
 
-    public void onSurfaceResized(int width, int height) {
-        queueEvent(() -> mServo.resize(width, height));
+    public void onSurfaceResized(final int width, final int height) {
+        queueEvent(new Runnable() {
+          public void run() {
+            mServo.resize(width, height);
+          }
+        });
     }
 
-    public void loadUri(Uri uri) {
+    public void loadUri(final Uri uri) {
         if (mServo != null) {
-            queueEvent(() -> mServo.loadUri(uri.toString()));
+            queueEvent(new Runnable() {
+              public void run() {
+                mServo.loadUri(uri.toString());
+              }
+            });
         } else {
             mInitialUri = uri;
         }
@@ -80,7 +103,11 @@ public class ServoView extends GLSurfaceView implements GestureDetector.OnGestur
 
     class WakeupCallback implements NativeServo.WakeupCallback {
         public void wakeup() {
-            queueEvent(() -> mServo.performUpdates());
+            queueEvent(new Runnable() {
+              public void run() {
+                mServo.performUpdates();
+              }
+            });
         };
     }
 
@@ -107,37 +134,61 @@ public class ServoView extends GLSurfaceView implements GestureDetector.OnGestur
 
         public void onLoadStarted() {
             if (mClient != null) {
-                post(() -> mClient.onLoadStarted());
+                post(new Runnable() {
+                  public void run() {
+                    mClient.onLoadStarted();
+                  }
+                });
             }
         }
 
         public void onLoadEnded() {
             if (mClient != null) {
-                post(() -> mClient.onLoadEnded());
+                post(new Runnable() {
+                  public void run() {
+                    mClient.onLoadEnded();
+                  }
+                });
             }
         }
 
         public void onTitleChanged(final String title) {
             if (mClient != null) {
-                post(() -> mClient.onTitleChanged(title));
+                post(new Runnable() {
+                  public void run() {
+                    mClient.onTitleChanged(title);
+                  }
+                });
             }
         }
 
         public void onUrlChanged(final String url) {
             if (mClient != null) {
-                post(() -> mClient.onUrlChanged(url));
+                post(new Runnable() {
+                  public void run() {
+                    mClient.onUrlChanged(url);
+                  }
+                });
             }
         }
 
         public void onHistoryChanged(final boolean canGoBack, final boolean canGoForward) {
             if (mClient != null) {
-                post(() -> mClient.onHistoryChanged(canGoBack, canGoForward));
+                post(new Runnable() {
+                  public void run() {
+                    mClient.onHistoryChanged(canGoBack, canGoForward);
+                  }
+                });
             }
         }
 
         public void onAnimatingChanged(final boolean animating) {
             if (!mAnimating && animating) {
-                post(() -> Choreographer.getInstance().postFrameCallback(ServoView.this));
+                post(new Runnable() {
+                  public void run() {
+                    Choreographer.getInstance().postFrameCallback(ServoView.this);
+                  }
+                });
             }
             mAnimating = animating;
         }
@@ -148,11 +199,13 @@ public class ServoView extends GLSurfaceView implements GestureDetector.OnGestur
         final ReadFileCallback c2 = new ReadFileCallback();
         final ServoCallbacks c3 = new ServoCallbacks();
         final boolean showLogs = true;
-        int width = getWidth();
-        int height = getHeight();
-        queueEvent(() -> {
+        final int width = getWidth();
+        final int height = getHeight();
+        queueEvent(new Runnable() {
+          public void run() {
             String uri = mInitialUri == null ? null : mInitialUri.toString();
             mServo.init(mActivity, mServoArgs, uri, c1, c2, c3, width, height, showLogs);
+          }
         });
     }
 
@@ -188,7 +241,11 @@ public class ServoView extends GLSurfaceView implements GestureDetector.OnGestur
 
         if (mScroller.isFinished() && mFlinging) {
             mFlinging = false;
-            queueEvent(() -> mServo.scrollEnd(0, 0, mCurX, mCurY));
+            queueEvent(new Runnable() {
+              public void run() {
+                mServo.scrollEnd(0, 0, mCurX, mCurY);
+              }
+            });
             if (!mAnimating) {
                 // Not scrolling. Not animating. We don't need to schedule
                 // another frame.
@@ -202,14 +259,18 @@ public class ServoView extends GLSurfaceView implements GestureDetector.OnGestur
             mCurY = mScroller.getCurrY();
         }
 
-        int dx = mCurX - mLastX;
-        int dy = mCurY - mLastY;
+        final int dx = mCurX - mLastX;
+        final int dy = mCurY - mLastY;
 
         mLastX = mCurX;
         mLastY = mCurY;
 
         if (dx != 0 || dy != 0) {
-            queueEvent(() -> mServo.scroll(dx, dy, mCurX, mCurY));
+            queueEvent(new Runnable() {
+              public void run() {
+                mServo.scroll(dx, dy, mCurX, mCurY);
+              }
+            });
         } else {
             if (mAnimating) {
                 requestRender();
@@ -250,7 +311,11 @@ public class ServoView extends GLSurfaceView implements GestureDetector.OnGestur
                 mCurY = (int)e.getY();
                 mLastY = mCurY;
                 mScroller.forceFinished(true);
-                queueEvent(() -> mServo.scrollStart(0, 0, mCurX, mCurY));
+                queueEvent(new Runnable() {
+                  public void run() {
+                    mServo.scrollStart(0, 0, mCurX, mCurY);
+                  }
+                });
                 Choreographer.getInstance().postFrameCallback(this);
                 return true;
             case (MotionEvent.ACTION_MOVE):
@@ -260,7 +325,11 @@ public class ServoView extends GLSurfaceView implements GestureDetector.OnGestur
             case (MotionEvent.ACTION_UP):
             case (MotionEvent.ACTION_CANCEL):
                 if (!mFlinging) {
-                    queueEvent(() -> mServo.scrollEnd(0, 0, mCurX, mCurY));
+                    queueEvent(new Runnable() {
+                      public void run() {
+                        mServo.scrollEnd(0, 0, mCurX, mCurY);
+                      }
+                    });
                     Choreographer.getInstance().removeFrameCallback(this);
                 }
                 return true;
@@ -269,8 +338,12 @@ public class ServoView extends GLSurfaceView implements GestureDetector.OnGestur
         }
     }
 
-    public boolean onSingleTapUp(MotionEvent e) {
-        queueEvent(() -> mServo.click((int)e.getX(), (int)e.getY()));
+    public boolean onSingleTapUp(final MotionEvent e) {
+        queueEvent(new Runnable() {
+          public void run() {
+            mServo.click((int)e.getX(), (int)e.getY());
+          }
+        });
         return false;
     }
 
