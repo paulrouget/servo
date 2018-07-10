@@ -6,18 +6,20 @@ import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    compileSdkVersion 27
+    buildToolsVersion "27.0.3"
 
     defaultConfig {
         minSdkVersion 18
-        targetSdkVersion 25
+        targetSdkVersion 27
         versionCode 1
         versionName "1.0.0"
     }
 
     compileOptions {
         incremental false
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     splits {
@@ -28,6 +30,8 @@ android {
             enable false
         }
     }
+
+    flavorDimensions "default"
 
     productFlavors {
         main {
@@ -139,20 +143,12 @@ android {
             variant.setIgnore(true);
         }
     }
-    
-     // Define AAR output directory
-     libraryVariants.all { variant ->
-         variant.outputs.each { output ->
-             def name = variant.buildType.name
-             output.outputFile = new File(getAarPath(isDebug(name), getArch(name)))
-         }
-     }
 
     // Call our custom NDK Build task using flavor parameters
     tasks.all {
-        compileTask ->
-            Pattern pattern = Pattern.compile(/^compile[A-Z][\w\d]+([A-Z][\w\d]+)(Debug|Release)/);
-            Matcher matcher = pattern.matcher(compileTask.name);
+        implTask ->
+            Pattern pattern = Pattern.compile(/^implementation[A-Z][\w\d]+([A-Z][\w\d]+)(Debug|Release)/);
+            Matcher matcher = pattern.matcher(implTask.name);
             if (!matcher.find()) {
                 return
             }
@@ -187,7 +183,7 @@ dependencies {
     for (arch in list) {
         for (debug in [true, false]) {
             String basePath = getTargetDir(debug, arch) + "/build"
-            String cmd = arch + (debug ? "Debug" : "Release") + "Compile"
+            String cmd = arch + (debug ? "Debug" : "Release") + "Implementation"
 
             for (ServoDependency dep: deps) {
                 String path = findDependencyPath(basePath, dep.fileName, dep.folderFilter)
@@ -198,9 +194,9 @@ dependencies {
         }
     }
 
-    googlevrCompile 'com.google.vr:sdk-base:1.70.0'
-    googlevrCompile(name:'GVRService', ext:'aar')
-    oculusvrCompile(name:'OVRService', ext:'aar')
+    googlevrImplementation 'com.google.vr:sdk-base:1.70.0'
+    googlevrImplementation(name:'GVRService', ext:'aar')
+    oculusvrImplementation(name:'OVRService', ext:'aar')
 }
 
 // Utility methods
@@ -235,7 +231,7 @@ String getRustTarget(String arch) {
     }
 }
 
-String getNDKAbi(String arch) {
+static String getNDKAbi(String arch) {
     switch (arch.toLowerCase()) {
         case 'arm' : return 'armeabi'
         case 'armv7' : return 'armeabi-v7a'
@@ -273,7 +269,7 @@ String getNdkDir() {
 }
 
 // folderFilter can be used to improve search performance
-String findDependencyPath(String basePath, String filename, String folderFilter) {
+static String findDependencyPath(String basePath, String filename, String folderFilter) {
     File path = new File(basePath);
     if (!path.exists()) {
         return ''
@@ -297,7 +293,7 @@ String findDependencyPath(String basePath, String filename, String folderFilter)
 }
 
 class ServoDependency {
-    public ServoDependency(String fileName, String folderFilter = null) {
+    ServoDependency(String fileName, String folderFilter = null) {
         this.fileName = fileName;
         this.folderFilter = folderFilter;
     }

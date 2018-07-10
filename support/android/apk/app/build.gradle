@@ -1,19 +1,23 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 25
-    buildToolsVersion "25.0.2"
+    compileSdkVersion 27
+    buildToolsVersion '27.0.3'
 
     defaultConfig {
         applicationId "com.mozilla.servo"
         minSdkVersion 18
-        targetSdkVersion 25
+        targetSdkVersion 27
         versionCode 1
         versionName "1.0.0"
-        jackOptions {
-            enabled true
-        }
     }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    flavorDimensions "default"
 
     productFlavors {
         main {
@@ -91,14 +95,6 @@ android {
             variant.setIgnore(true);
         }
     }
-    
-    // Define apk output directory
-    applicationVariants.all { variant ->
-        variant.outputs.each { output ->
-            def name = variant.buildType.name
-            output.outputFile = new File(getApkPath(isDebug(name), getArch(name)))
-        }
-    }
 
     sourceSets {
         main {
@@ -107,19 +103,11 @@ android {
         }
     }
 
-    // Define apk output directory
-    applicationVariants.all { variant ->
-        variant.outputs.each { output ->
-            def name = variant.buildType.name
-            output.outputFile = new File(getApkPath(isDebug(name), getArch(name)))
-        }
-    }
-
 }
 
 dependencies {
-    compile 'com.android.support.constraint:constraint-layout:1.0.0'
-    compile(name:'servoview', ext:'aar')
+    implementation 'com.android.support.constraint:constraint-layout:1.1.2'
+    implementation(name:'servoview', ext:'aar')
 }
 
 String getTargetDir(boolean debug, String arch) {
@@ -131,15 +119,15 @@ String getApkPath(boolean debug, String arch) {
     return getTargetDir(debug, arch) + '/servo.apk'
 }
 
-String getArch(String buildType) {
+static String getArch(String buildType) {
     return buildType.replaceAll(/(Debug|Release)/, '')
 }
 
-boolean isDebug(String buildType) {
+static boolean isDebug(String buildType) {
     return buildType.contains("Debug")
 }
 
-String getRustTarget(String arch) {
+static String getRustTarget(String arch) {
     switch (arch.toLowerCase()) {
         case 'arm' : return 'arm-linux-androideabi'
         case 'armv7' : return 'armv7-linux-androideabi'
@@ -149,7 +137,7 @@ String getRustTarget(String arch) {
     }
 }
 
-String getNDKAbi(String arch) {
+static String getNDKAbi(String arch) {
     switch (arch.toLowerCase()) {
         case 'arm' : return 'armeabi'
         case 'armv7' : return 'armeabi-v7a'
