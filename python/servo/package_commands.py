@@ -217,7 +217,8 @@ class PackageCommands(CommandBase):
             task_name = "assemble" + flavor_name + build_type + build_mode
             try:
                 with cd(path.join("support", "android", "apk")):
-                    subprocess.check_call(["./gradlew", "--no-daemon", task_name], env=env)
+                    subprocess.check_call(["./gradlew", "--no-daemon", ":servoview:" + task_name], env=env)
+                    subprocess.check_call(["./gradlew", "--no-daemon", ":app:" + task_name], env=env)
             except subprocess.CalledProcessError as e:
                 print("Packaging Android exited with return value %d" % e.returncode)
                 return e.returncode
