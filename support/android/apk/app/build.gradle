@@ -91,14 +91,6 @@ android {
             variant.setIgnore(true);
         }
     }
-    
-    // Define apk output directory
-    applicationVariants.all { variant ->
-        variant.outputs.each { output ->
-            def name = variant.buildType.name
-            output.outputFile = new File(getApkPath(isDebug(name), getArch(name)))
-        }
-    }
 
     sourceSets {
         main {
