@@ -139,7 +139,7 @@ android {
 
     // Ignore default 'debug' and 'release' build types
     variantFilter { variant ->
-        if(variant.buildType.name.equals('release') || variant.buildType.name.equals('debug')) {
+        if(variant.buildType.name == 'release' || variant.buildType.name == 'debug') {
             variant.setIgnore(true);
         }
     }
@@ -157,7 +157,7 @@ android {
             tasks.create(name: taskName, type: Exec) {
                 def debug = compileTask.name.contains("Debug")
                 def arch = matcher.group(1)
-                commandLine getNdkDir(),
+                commandLine getNdkBuild(),
                         'APP_BUILD_SCRIPT=../jni/Android.mk',
                         'NDK_APPLICATION_MK=../jni/Application.mk',
                         'NDK_LIBS_OUT=' + getJniLibsPath(debug, arch),
@@ -194,7 +194,7 @@ dependencies {
         }
     }
 
-    googlevrImplementation 'com.google.vr:sdk-base:1.70.0'
+    googlevrImplementation 'com.google.vr:sdk-base:1.140.0'
     googlevrImplementation(name:'GVRService', ext:'aar')
     oculusvrImplementation(name:'OVRService', ext:'aar')
 }
@@ -241,7 +241,7 @@ static String getNDKAbi(String arch) {
     }
 }
 
-String getNdkDir() {
+String getNdkBuild() {
     // Read environment variable used in rust build system
     String ndkDir = System.getenv('ANDROID_NDK')
     if (ndkDir == null) {

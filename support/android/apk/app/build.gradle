@@ -91,8 +91,8 @@ android {
 
     // Ignore default 'debug' and 'release' build types
     variantFilter { variant ->
-        if(variant.buildType.name.equals('release') || variant.buildType.name.equals('debug')) {
-            variant.setIgnore(true);
+        if(variant.buildType.name == 'release' || variant.buildType.name == 'debug') {
+            variant.setIgnore(true)
         }
     }
 
@@ -107,7 +107,7 @@ android {
 
 dependencies {
     implementation 'com.android.support.constraint:constraint-layout:1.1.2'
-    implementation(name:'servoview', ext:'aar')
+    implementation(name:'servoview-main-armv7Debug', ext:'aar')
 }
 
 String getTargetDir(boolean debug, String arch) {
