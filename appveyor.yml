@@ -62,6 +62,7 @@ build_script:
   # see https://github.com/servo/servo/issues/20664
   #- mach cargo check -p compositing --no-default-features
   - mach build -d -v
+  - mach build -d -p libsimpleservo -v
   - mach test-unit
 
 test: off

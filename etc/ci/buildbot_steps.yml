@@ -42,6 +42,7 @@ mac-dev-unit:
   - ./mach clean-nightlies --keep 3 --force
   - ./mach clean-cargo-cache --keep 3 --force
   - env PKG_CONFIG_PATH=/usr/local/opt/zlib/lib/pkgconfig ./mach build --dev
+  - env PKG_CONFIG_PATH=/usr/local/opt/zlib/lib/pkgconfig ./mach build --dev -p libsimpleservo
   - env PKG_CONFIG_PATH=/usr/local/opt/zlib/lib/pkgconfig ./mach test-unit
   - python ./etc/memory_reports_over_time.py --test
   - ./mach package --dev
@@ -185,6 +186,7 @@ windows-msvc-dev:
   - mach.bat clean-cargo-cache --keep 3 --force
   - mach.bat clean-nightlies --keep 3 --force
   - mach.bat build --dev
+  - mach.bat build -p libsimpleservo --dev
   - mach.bat test-unit
   - mach.bat package --dev
 
