@@ -16,7 +16,7 @@ unstable = ["parking_lot/nightly"]
 app_units = "0.6"
 atomic_refcell = "0.1"
 embedder_traits = {path = "../embedder_traits"}
-euclid = "0.18"
+euclid = "0.19"
 fnv = "1.0"
 gfx = {path = "../gfx"}
 gfx_traits = {path = "../gfx_traits"}
@@ -33,7 +33,7 @@ malloc_size_of = { path = "../malloc_size_of" }
 metrics = {path = "../metrics"}
 msg = {path = "../msg"}
 net_traits = {path = "../net_traits"}
-parking_lot = "0.5"
+parking_lot = "0.6"
 profile_traits = {path = "../profile_traits"}
 range = {path = "../range"}
 rayon = "1"

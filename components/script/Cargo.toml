@@ -45,7 +45,7 @@ domobject_derive = {path = "../domobject_derive"}
 embedder_traits = {path = "../embedder_traits"}
 encoding_rs = "0.7"
 enum-iterator = "0.2.0"
-euclid = "0.18"
+euclid = "0.19"
 fnv = "1.0"
 gleam = "0.6"
 half = "1.0"
@@ -69,8 +69,8 @@ mozjs = { version = "0.7.1", features = ["promises"]}
 msg = {path = "../msg"}
 net_traits = {path = "../net_traits"}
 num-traits = "0.1.32"
-offscreen_gl_context = {version = "0.20", features = ["serde"]}
-parking_lot = "0.5"
+offscreen_gl_context = {version = "0.21", features = ["serde"]}
+parking_lot = "0.6"
 phf = "0.7.18"
 profile_traits = {path = "../profile_traits"}
 ref_filter_map = "1.0.1"
