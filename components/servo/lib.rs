@@ -191,8 +191,9 @@ impl<Window> Servo<Window> where Window: WindowMethods + 'static {
         };
 
         let webrender_api = webrender_api_sender.create_api();
-        let wr_document_layer = 0; //TODO
-        let webrender_document = webrender_api.add_document(coordinates.framebuffer, wr_document_layer);
+        // let wr_document_layer = 0; //TODO
+        // println!("webrender_api.add_document {:?}, {:?}", coordinates.framebuffer, wr_document_layer);
+        // let webrender_document = webrender_api.add_document(coordinates.framebuffer, wr_document_layer);
 
         // Important that this call is done in a single-threaded fashion, we
         // can't defer it after `create_constellation` has started.
@@ -211,7 +212,6 @@ impl<Window> Servo<Window> where Window: WindowMethods + 'static {
                                                                     devtools_chan,
                                                                     supports_clipboard,
                                                                     &mut webrender,
-                                                                    webrender_document,
                                                                     webrender_api_sender,
                                                                     window.gl());
 
@@ -226,14 +226,13 @@ impl<Window> Servo<Window> where Window: WindowMethods + 'static {
 
         // The compositor coordinates with the client window to create the final
         // rendered page and display it somewhere.
-        let compositor = IOCompositor::create(window, InitialCompositorState {
+        let compositor = IOCompositor::new(window, InitialCompositorState {
             sender: compositor_proxy,
             receiver: compositor_receiver,
             constellation_chan: constellation_chan.clone(),
             time_profiler_chan: time_profiler_chan,
             mem_profiler_chan: mem_profiler_chan,
             webrender,
-            webrender_document,
             webrender_api,
         });
 
@@ -265,32 +264,32 @@ impl<Window> Servo<Window> where Window: WindowMethods + 'static {
                 }
             }
 
-            WindowEvent::MouseWindowEventClass(mouse_window_event) => {
-                self.compositor.on_mouse_window_event_class(mouse_window_event);
+            WindowEvent::MouseWindowEventClass(area, mouse_window_event) => {
+                self.compositor.on_mouse_window_event_class(area, mouse_window_event);
             }
 
-            WindowEvent::MouseWindowMoveEventClass(cursor) => {
-                self.compositor.on_mouse_window_move_event_class(cursor);
+            WindowEvent::MouseWindowMoveEventClass(area, cursor) => {
+                self.compositor.on_mouse_window_move_event_class(area, cursor);
             }
 
-            WindowEvent::Touch(event_type, identifier, location) => {
-                self.compositor.on_touch_event(event_type, identifier, location);
+            WindowEvent::Touch(area, event_type, identifier, location) => {
+                self.compositor.on_touch_event(area, event_type, identifier, location);
             }
 
-            WindowEvent::Scroll(delta, cursor, phase) => {
-                self.compositor.on_scroll_event(delta, cursor, phase);
+            WindowEvent::Scroll(area, delta, cursor, phase) => {
+                self.compositor.on_scroll_event(area, delta, cursor, phase);
             }
 
-            WindowEvent::Zoom(magnification) => {
-                self.compositor.on_zoom_window_event(magnification);
+            WindowEvent::Zoom(area, magnification) => {
+                self.compositor.on_zoom_window_event(area, magnification);
             }
 
-            WindowEvent::ResetZoom => {
-                self.compositor.on_zoom_reset_window_event();
+            WindowEvent::ResetZoom(area) => {
+                self.compositor.on_zoom_reset_window_event(area);
             }
 
-            WindowEvent::PinchZoom(magnification) => {
-                self.compositor.on_pinch_zoom_window_event(magnification);
+            WindowEvent::PinchZoom(area, magnification) => {
+                self.compositor.on_pinch_zoom_window_event(area, magnification);
             }
 
             WindowEvent::Navigation(top_level_browsing_context_id, direction) => {
@@ -326,8 +325,15 @@ impl<Window> Servo<Window> where Window: WindowMethods + 'static {
                 self.compositor.capture_webrender();
             }
 
-            WindowEvent::NewBrowser(url, response_chan) => {
-                let msg = ConstellationMsg::NewBrowser(url, response_chan);
+            WindowEvent::NewArea(coords, layer, response_chan) => {
+                let area = self.compositor.create_area(coords, layer);
+                if let Err(e) = response_chan.send(area) {
+                    warn!("Sending Area to embedder failed ({}).", e);
+                }
+            }
+
+            WindowEvent::NewBrowser(url, area, response_chan) => {
+                let msg = ConstellationMsg::NewBrowser(url, area, response_chan);
                 if let Err(e) = self.constellation_chan.send(msg) {
                     warn!("Sending NewBrowser message to constellation failed ({}).", e);
                 }
@@ -400,9 +406,10 @@ impl<Window> Servo<Window> where Window: WindowMethods + 'static {
         self.compositor.repaint_synchronously()
     }
 
-    pub fn pinch_zoom_level(&self) -> f32 {
-        self.compositor.pinch_zoom_level()
-    }
+    // FIXME
+    // pub fn pinch_zoom_level(&self) -> f32 {
+    //     self.compositor.pinch_zoom_level()
+    // }
 
     pub fn setup_logging(&self) {
         let constellation_chan = self.constellation_chan.clone();
@@ -456,7 +463,6 @@ fn create_constellation(user_agent: Cow<'static, str>,
                         devtools_chan: Option<Sender<devtools_traits::DevtoolsControlMsg>>,
                         supports_clipboard: bool,
                         webrender: &mut webrender::Renderer,
-                        webrender_document: webrender_api::DocumentId,
                         webrender_api_sender: webrender_api::RenderApiSender,
                         window_gl: Rc<gl::Gl>)
                         -> (Sender<ConstellationMsg>, SWManagerSenders) {
@@ -524,7 +530,6 @@ fn create_constellation(user_agent: Cow<'static, str>,
         time_profiler_chan,
         mem_profiler_chan,
         supports_clipboard,
-        webrender_document,
         webrender_api_sender,
         webgl_threads,
         webvr_chan,

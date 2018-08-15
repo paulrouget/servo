@@ -17,7 +17,7 @@ use std::fmt::{Debug, Error, Formatter};
 #[cfg(feature = "gleam")]
 use std::rc::Rc;
 use style_traits::DevicePixel;
-use webrender_api::{DeviceIntPoint, DevicePoint, DeviceUintSize, DeviceUintRect, ScrollLocation};
+use webrender_api::{DeviceIntPoint, DevicePoint, DeviceUintSize, DeviceUintRect, DocumentId, DocumentLayer, ScrollLocation};
 
 #[derive(Clone)]
 pub enum MouseWindowEvent {
@@ -52,20 +52,20 @@ pub enum WindowEvent {
     /// Sent when a new URL is to be loaded.
     LoadUrl(TopLevelBrowsingContextId, ServoUrl),
     /// Sent when a mouse hit test is to be performed.
-    MouseWindowEventClass(MouseWindowEvent),
+    MouseWindowEventClass(DocumentId, MouseWindowEvent),
     /// Sent when a mouse move.
-    MouseWindowMoveEventClass(DevicePoint),
+    MouseWindowMoveEventClass(DocumentId, DevicePoint),
     /// Touch event: type, identifier, point
-    Touch(TouchEventType, TouchId, DevicePoint),
+    Touch(DocumentId, TouchEventType, TouchId, DevicePoint),
     /// Sent when the user scrolls. The first point is the delta and the second point is the
     /// origin.
-    Scroll(ScrollLocation, DeviceIntPoint, TouchEventType),
+    Scroll(DocumentId, ScrollLocation, DeviceIntPoint, TouchEventType),
     /// Sent when the user zooms.
-    Zoom(f32),
+    Zoom(DocumentId, f32),
     /// Simulated "pinch zoom" gesture for non-touch platforms (e.g. ctrl-scrollwheel).
-    PinchZoom(f32),
+    PinchZoom(DocumentId, f32),
     /// Sent when the user resets zoom to default.
-    ResetZoom,
+    ResetZoom(DocumentId),
     /// Sent when the user uses chrome navigation (i.e. backspace or shift-backspace).
     Navigation(TopLevelBrowsingContextId, TraversalDirection),
     /// Sent when the user quits the application
@@ -75,7 +75,9 @@ pub enum WindowEvent {
     /// Sent when Ctr+R/Apple+R is called to reload the current page.
     Reload(TopLevelBrowsingContextId),
     /// Create a new top level browsing context
-    NewBrowser(ServoUrl, IpcSender<TopLevelBrowsingContextId>),
+    NewBrowser(ServoUrl, DocumentId, IpcSender<TopLevelBrowsingContextId>),
+    /// FIXME
+    NewArea(AreaCoordinates, DocumentLayer, IpcSender<DocumentId>),
     /// Close a top level browsing context
     CloseBrowser(TopLevelBrowsingContextId),
     /// Panic a top level browsing context.
@@ -103,12 +105,13 @@ impl Debug for WindowEvent {
             WindowEvent::Scroll(..) => write!(f, "Scroll"),
             WindowEvent::Zoom(..) => write!(f, "Zoom"),
             WindowEvent::PinchZoom(..) => write!(f, "PinchZoom"),
-            WindowEvent::ResetZoom => write!(f, "ResetZoom"),
+            WindowEvent::ResetZoom(..) => write!(f, "ResetZoom"),
             WindowEvent::Navigation(..) => write!(f, "Navigation"),
             WindowEvent::Quit => write!(f, "Quit"),
             WindowEvent::Reload(..) => write!(f, "Reload"),
             WindowEvent::NewBrowser(..) => write!(f, "NewBrowser"),
             WindowEvent::SendError(..) => write!(f, "SendError"),
+            WindowEvent::NewArea(..) => write!(f, "NewArea"),
             WindowEvent::CloseBrowser(..) => write!(f, "CloseBrowser"),
             WindowEvent::SelectBrowser(..) => write!(f, "SelectBrowser"),
             WindowEvent::ToggleWebRenderDebug(..) => write!(f, "ToggleWebRenderDebug"),
@@ -158,6 +161,6 @@ pub struct EmbedderCoordinates {
     pub window: (DeviceUintSize, DeviceIntPoint),
     /// Size of the GL buffer in the window.
     pub framebuffer: DeviceUintSize,
-    /// Coordinates of the document within the framebuffer.
-    pub viewport: DeviceUintRect,
 }
+
+pub type AreaCoordinates = DeviceUintRect;

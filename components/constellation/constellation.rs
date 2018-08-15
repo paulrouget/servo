@@ -139,7 +139,7 @@ use servo_remutex::ReentrantMutex;
 use servo_url::{Host, ImmutableOrigin, ServoUrl};
 use session_history::{JointSessionHistory, NeedsToReload, SessionHistoryChange, SessionHistoryDiff};
 use std::borrow::ToOwned;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::marker::PhantomData;
 use std::mem::replace;
 use std::process;
@@ -151,7 +151,7 @@ use style_traits::CSSPixel;
 use style_traits::cursor::CursorKind;
 use style_traits::viewport::ViewportConstraints;
 use timer_scheduler::TimerScheduler;
-use webrender_api;
+use webrender_api::{self, DocumentId};
 use webvr_traits::{WebVREvent, WebVRMsg};
 
 /// The `Constellation` itself. In the servo browser, there is one
@@ -200,8 +200,9 @@ pub struct Constellation<Message, LTF, STF> {
     /// constellation to send messages to the compositor thread.
     compositor_proxy: CompositorProxy,
 
-    /// The last frame tree sent to WebRender.
-    active_browser_id: Option<TopLevelBrowsingContextId>,
+    /// The trees sent to WebRender.
+    active_browsers: HashSet<TopLevelBrowsingContextId>,
+    wrdocs: HashMap<TopLevelBrowsingContextId, DocumentId>, 
 
     /// Channels for the constellation to send messages to the public
     /// resource-related threads.  There are two groups of resource
@@ -256,9 +257,6 @@ pub struct Constellation<Message, LTF, STF> {
     /// A channel for the constellation to send messages to the
     /// timer thread.
     scheduler_chan: IpcSender<TimerSchedulerMsg>,
-
-    /// A single WebRender document the constellation operates on.
-    webrender_document: webrender_api::DocumentId,
 
     /// A channel for the constellation to send messages to the
     /// WebRender thread.
@@ -367,9 +365,6 @@ pub struct InitialConstellationState {
 
     /// A channel to the memory profiler thread.
     pub mem_profiler_chan: mem::ProfilerChan,
-
-    /// Webrender document ID.
-    pub webrender_document: webrender_api::DocumentId,
 
     /// Webrender API.
     pub webrender_api_sender: webrender_api::RenderApiSender,
@@ -595,7 +590,7 @@ where
                     network_listener_receiver: network_listener_receiver,
                     embedder_proxy: state.embedder_proxy,
                     compositor_proxy: state.compositor_proxy,
-                    active_browser_id: None,
+                    active_browsers: HashSet::new(),
                     debugger_chan: state.debugger_chan,
                     devtools_chan: state.devtools_chan,
                     bluetooth_thread: state.bluetooth_thread,
@@ -637,7 +632,6 @@ where
                     webdriver: WebDriverData::new(),
                     scheduler_chan: TimerScheduler::start(),
                     document_states: HashMap::new(),
-                    webrender_document: state.webrender_document,
                     webrender_api_sender: state.webrender_api_sender,
                     shutting_down: false,
                     handled_warnings: VecDeque::new(),
@@ -655,6 +649,7 @@ where
                     webgl_threads: state.webgl_threads,
                     webvr_chan: state.webvr_chan,
                     canvas_chan: CanvasPaintThread::start(),
+                    wrdocs: HashMap::new(),
                 };
 
                 constellation.run();
@@ -759,6 +754,8 @@ where
             .map(|pipeline| pipeline.visible)
             .or(parent_visibility);
 
+        let webrender_document = *self.wrdocs.get(&top_level_browsing_context_id).unwrap(); // FIXME
+
         let result = Pipeline::spawn::<Message, LTF, STF>(InitialPipelineState {
             id: pipeline_id,
             browsing_context_id,
@@ -785,7 +782,7 @@ where
             pipeline_namespace_id: self.next_pipeline_namespace_id(),
             prev_visibility,
             webrender_api_sender: self.webrender_api_sender.clone(),
-            webrender_document: self.webrender_document,
+            webrender_document,
             is_private,
             webgl_chan: self
                 .webgl_threads
@@ -1032,9 +1029,9 @@ where
             },
             // Create a new top level browsing context. Will use response_chan to return
             // the browsing context id.
-            FromCompositorMsg::NewBrowser(url, response_chan) => {
-                self.handle_new_top_level_browsing_context(url, response_chan);
-            },
+            FromCompositorMsg::NewBrowser(url, wrdoc, response_chan) => {
+                self.handle_new_top_level_browsing_context(url, wrdoc, response_chan);
+            }
             // Close a top level browsing context.
             FromCompositorMsg::CloseBrowser(top_level_browsing_context_id) => {
                 self.handle_close_top_level_browsing_context(top_level_browsing_context_id);
@@ -1231,10 +1228,15 @@ where
             },
             FromScriptMsg::LogEntry(thread_name, entry) => {
                 self.handle_log_entry(Some(source_top_ctx_id), thread_name, entry);
-            },
-            FromScriptMsg::TouchEventProcessed(result) => self
-                .compositor_proxy
-                .send(ToCompositorMsg::TouchEventProcessed(result)),
+            }
+            FromScriptMsg::TouchEventProcessed(result) => {
+                let ctx_id = BrowsingContextId::from(source_top_ctx_id);
+                let pipeline_id = match self.browsing_contexts.get(&ctx_id) {
+                    Some(ctx) => self.compositor_proxy.send(ToCompositorMsg::TouchEventProcessed(ctx.pipeline_id, result)),
+                    None => return warn!("TouchEventProcessed sent for unknown browsing context."),
+                };
+                // FIXME: isn't something missing here?
+            }
             FromScriptMsg::GetBrowsingContextId(pipeline_id, sender) => {
                 let result = self
                     .pipelines
@@ -1645,6 +1647,7 @@ where
     fn handle_new_top_level_browsing_context(
         &mut self,
         url: ServoUrl,
+        wrdoc: DocumentId,
         reply: IpcSender<TopLevelBrowsingContextId>,
     ) {
         let window_size = self.window_size.initial_viewport;
@@ -1657,6 +1660,7 @@ where
             );
         }
         let browsing_context_id = BrowsingContextId::from(top_level_browsing_context_id);
+        self.wrdocs.insert(top_level_browsing_context_id, wrdoc);
         let load_data = LoadData::new(url.clone(), None, None, None);
         let sandbox = IFrameSandboxState::IFrameUnsandboxed;
         if self.focus_pipeline_id.is_none() {
@@ -3469,6 +3473,7 @@ where
         browsing_context_id: BrowsingContextId,
         exit_mode: ExitPipelineMode,
     ) {
+        // FIXME: what about active_browsers?
         debug!("Closing browsing context {}.", browsing_context_id);
 
         self.close_browsing_context_children(
@@ -3715,30 +3720,51 @@ where
         &mut self,
         top_level_browsing_context_id: TopLevelBrowsingContextId,
     ) {
-        // Only send the frame tree if it's the active one or if no frame tree
-        // has been sent yet.
-        if self.active_browser_id.is_none() ||
-            Some(top_level_browsing_context_id) == self.active_browser_id
-        {
+        // Only send the frame tree if it's an active one or if no frame tree has been sent yet for its area
+
+        if self.active_browsers.contains(&top_level_browsing_context_id) {
             self.send_frame_tree(top_level_browsing_context_id);
+        } else {
+            let wrdoc = self.wrdocs.get(&top_level_browsing_context_id).map(|wrdoc| *wrdoc);
+            if let Some(wrdoc) = wrdoc {
+                if self.get_active_context_for_wrdoc(&wrdoc).is_none() {
+                    self.send_frame_tree(top_level_browsing_context_id);
+                } else {
+                    // Already a browser for this area. Ignore.
+                }
+            } else {
+                panic!("Unknown ctx");
+            }
+        }
+    }
+
+    fn get_active_context_for_wrdoc(&self, wrdoc: &DocumentId) -> Option<TopLevelBrowsingContextId> {
+        let ctx: Vec<&TopLevelBrowsingContextId> = self.active_browsers.iter().filter(|b| self.wrdocs.get(b) == Some(wrdoc)).collect();
+        match ctx.len() {
+            0 => None,
+            1 => Some(*ctx[0]),
+            _ => panic!("unexpected"),
         }
     }
 
     /// Send the current frame tree to compositor
     fn send_frame_tree(&mut self, top_level_browsing_context_id: TopLevelBrowsingContextId) {
-        self.active_browser_id = Some(top_level_browsing_context_id);
-        let browsing_context_id = BrowsingContextId::from(top_level_browsing_context_id);
+        if let Some(wrdoc) = self.wrdocs.get(&top_level_browsing_context_id) {
+            if let Some(before_context) = self.get_active_context_for_wrdoc(wrdoc) {
+                self.active_browsers.remove(&before_context);
+            }
+            self.active_browsers.insert(top_level_browsing_context_id);
+            let browsing_context_id = BrowsingContextId::from(top_level_browsing_context_id);
 
-        // Note that this function can panic, due to ipc-channel creation failure.
-        // avoiding this panic would require a mechanism for dealing
-        // with low-resource scenarios.
-        debug!(
-            "Sending frame tree for browsing context {}.",
-            browsing_context_id
-        );
-        if let Some(frame_tree) = self.browsing_context_to_sendable(browsing_context_id) {
-            self.compositor_proxy
-                .send(ToCompositorMsg::SetFrameTree(frame_tree));
+            // Note that this function can panic, due to ipc-channel creation failure.
+            // avoiding this panic would require a mechanism for dealing
+            // with low-resource scenarios.
+            debug!("Sending frame tree for browsing context {}.", browsing_context_id);
+            if let Some(frame_tree) = self.browsing_context_to_sendable(browsing_context_id) {
+                self.compositor_proxy.send(ToCompositorMsg::SetFrameTree(*wrdoc, frame_tree));
+            }
+        } else {
+            panic!("Unknown ctx");
         }
     }
 
