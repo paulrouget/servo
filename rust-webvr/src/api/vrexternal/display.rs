@@ -10,7 +10,8 @@ use {
 };
 
 pub struct VRExternalDisplay {
-    last_state: mozgfx::VRSystemState,
+    system_state: mozgfx::VRSystemState,
+    browser_state: mozgfx::VRBrowserState,
     rendered_layer: Option<VRLayer>,
     shmem: VRExternalShmemPtr,
     display_id: u32,
@@ -20,9 +21,11 @@ pub struct VRExternalDisplay {
 
 impl VRExternalDisplay {
     pub fn new(shmem: VRExternalShmemPtr) -> VRDisplayPtr {
-        let last_state = shmem.system().as_ref().copy();
+        let system_state = shmem.pull_system(&|_| true);
+        let browser_state = shmem.pull_browser();
         Arc::new(RefCell::new(VRExternalDisplay {
-            last_state,
+            system_state,
+            browser_state,
             rendered_layer: None,
             shmem,
             display_id: utils::new_id(),
@@ -33,49 +36,23 @@ impl VRExternalDisplay {
 }
 
 impl VRExternalDisplay {
-    fn block_until_sensor_state_changed(&mut self) {
-        loop {
-            {
-                let sys = self.shmem.system().as_ref().copy();
-                // let {
-                //     sensorState.inputFrameID: id,
-                //     displayState.mPresentingGeneration: gen,
-                //     displayState.mSuppressFrames: suppress_frames,
-                //     displayState.mIsConnected: is_connected,
-                // } = sys.as_ref();
-                if sys.displayState.mPresentingGeneration != self.last_state.displayState.mPresentingGeneration {
-                    // FIXME: return and exit
-                }
-                // FIXME: should I copy the state here?
-                /*
-                    We should handle some extra situations to exit the wait loop. See how this wait is implemented in Gecko
-
-                      // PullState blocks until we have a new id, the device is disconnected or mSuppressFrames has been set.
-                      PullState([&]() {
-                        return (mDisplayInfo.mDisplayState.mLastSubmittedFrameId >= aFrameId) ||
-                                mDisplayInfo.mDisplayState.mSuppressFrames ||
-                                !mDisplayInfo.mDisplayState.mIsConnected;
-                      });
-
-                      if (mDisplayInfo.mDisplayState.mSuppressFrames || !mDisplayInfo.mDisplayState.mIsConnected) {
-                        // External implementation wants to supress frames, service has shut down or hardware has been disconnected.
-                        return false;
-                      }
-
-                    Note, only the mPresentingGeneration change should trigger a servo WebVR session exit.
-                    The other situations (mSuppressFrames and disconnect) can last just one or a few frames so are recoverable
-                */
-                if sys.sensorState.inputFrameID != self.last_state.sensorState.inputFrameID {
-                    self.last_state = sys;
-                    break;
-                }
-                // if id != prev_id {
-                //     self.last_sensor_frame_id = id;
-                //     break;
-                // }
-            }
-            // FIXME: We should block with the condition variable
+    fn push_browser(&mut self) {
+        self.shmem.push_browser(self.browser_state.clone());
+    }
+    fn pull_system(&mut self) -> bool {
+        let last_frame_id = self.system_state.displayState.mLastSubmittedFrameId;
+        let last_pres_gen = self.system_state.displayState.mPresentingGeneration;
+        let sys = self.shmem.pull_system(&|sys| {
+            sys.displayState.mLastSubmittedFrameId >= last_frame_id ||
+                sys.displayState.mSuppressFrames ||
+                !sys.displayState.mIsConnected
+        });
+        if sys.displayState.mPresentingGeneration != last_pres_gen {
+            // Shutdown requested
+            return true;
         }
+        self.system_state = sys;
+        return false;
     }
 }
 
@@ -86,9 +63,8 @@ impl VRDisplay for VRExternalDisplay {
 
     fn data(&self) -> VRDisplayData {
         let mut data = VRDisplayData::default();
-        let sys = self.shmem.system();
 
-        let state: &mozgfx::VRDisplayState = &sys.as_ref().displayState;
+        let state: &mozgfx::VRDisplayState = &self.system_state.displayState;
         data.display_name = state.mDisplayName.iter().map(|x| *x as char).collect();
         data.display_id = self.display_id;
         data.connected = state.mIsConnected;
@@ -139,15 +115,14 @@ impl VRDisplay for VRExternalDisplay {
     }
 
     fn inmediate_frame_data(&self, near_z: f64, far_z: f64) -> VRFrameData {
-        // FIXME: should I use a copy of the state here?
-        let sys = self.shmem.system();
+        let sys = &self.system_state;
 
         let mut data = VRFrameData::default();
 
-        data.pose.position = Some(sys.as_ref().sensorState.pose.position);
-        data.pose.orientation = Some(sys.as_ref().sensorState.pose.orientation);
-        data.left_view_matrix = sys.as_ref().sensorState.leftViewMatrix;
-        data.right_view_matrix = sys.as_ref().sensorState.rightViewMatrix;
+        data.pose.position = Some(sys.sensorState.pose.position);
+        data.pose.orientation = Some(sys.sensorState.pose.orientation);
+        data.left_view_matrix = sys.sensorState.leftViewMatrix;
+        data.right_view_matrix = sys.sensorState.rightViewMatrix;
 
         let right_handed = sys.controllerState[0].hand == mozgfx::ControllerHand_Right;
 
@@ -175,9 +150,9 @@ impl VRDisplay for VRExternalDisplay {
         };
 
         let left_fov =
-            sys.as_ref().displayState.mEyeFOV[mozgfx::VRDisplayState_Eye_Eye_Left as usize];
+            sys.displayState.mEyeFOV[mozgfx::VRDisplayState_Eye_Eye_Left as usize];
         let right_fov =
-            sys.as_ref().displayState.mEyeFOV[mozgfx::VRDisplayState_Eye_Eye_Right as usize];
+            sys.displayState.mEyeFOV[mozgfx::VRDisplayState_Eye_Eye_Right as usize];
 
         data.left_projection_matrix = proj(left_fov);
         data.right_projection_matrix = proj(right_fov);
@@ -198,7 +173,10 @@ impl VRDisplay for VRExternalDisplay {
         if !self.presenting {
             self.start_present(None);
         }
-        self.block_until_sensor_state_changed();
+        let shutdown = self.pull_system();
+        if shutdown {
+            // TODO: once events are supported, push a Exit event.
+        }
     }
 
     fn bind_framebuffer(&mut self, _index: u32) {
@@ -227,28 +205,27 @@ impl VRDisplay for VRExternalDisplay {
     }
 
     fn submit_frame(&mut self) {
-        let mut browser = self.shmem.browser();
-
-        let rendered_layer = self.rendered_layer.as_ref().unwrap();
-
-        let layer_stereo_immersive = mozgfx::VRLayer_Stereo_Immersive {
-            mTextureHandle: rendered_layer.texture_id as u64,
-            mTextureType: mozgfx::VRLayerTextureType_LayerTextureType_GeckoSurfaceTexture,
-            mFrameId: self.last_sensor_frame_id,
-            mLeftEyeRect: mozgfx::VRLayerEyeRect {
-                x: rendered_layer.left_bounds[0],
-                y: rendered_layer.left_bounds[1],
-                width: rendered_layer.left_bounds[2],
-                height: rendered_layer.left_bounds[3],
-            },
-            mRightEyeRect: mozgfx::VRLayerEyeRect {
-                x: rendered_layer.right_bounds[0],
-                y: rendered_layer.right_bounds[1],
-                width: rendered_layer.right_bounds[2],
-                height: rendered_layer.right_bounds[3],
-            },
-            __bindgen_padding_0: 0,
-            mInputFrameId: 0,
+        let layer_stereo_immersive = {
+            let rendered_layer = self.rendered_layer.as_ref().unwrap();
+            mozgfx::VRLayer_Stereo_Immersive {
+                mTextureHandle: rendered_layer.texture_id as u64,
+                mTextureType: mozgfx::VRLayerTextureType_LayerTextureType_GeckoSurfaceTexture,
+                mFrameId: self.system_state.sensorState.inputFrameID,
+                mLeftEyeRect: mozgfx::VRLayerEyeRect {
+                    x: rendered_layer.left_bounds[0],
+                    y: rendered_layer.left_bounds[1],
+                    width: rendered_layer.left_bounds[2],
+                    height: rendered_layer.left_bounds[3],
+                },
+                mRightEyeRect: mozgfx::VRLayerEyeRect {
+                    x: rendered_layer.right_bounds[0],
+                    y: rendered_layer.right_bounds[1],
+                    width: rendered_layer.right_bounds[2],
+                    height: rendered_layer.right_bounds[3],
+                },
+                __bindgen_padding_0: 0,
+                mInputFrameId: 0,
+            }
         };
 
         let layer = mozgfx::VRLayerState {
@@ -259,7 +236,8 @@ impl VRDisplay for VRExternalDisplay {
             },
         };
 
-        browser.as_mut().layerState[0] = layer;
+        self.browser_state.layerState[0] = layer;
+        self.push_browser();
     }
 
     fn start_present(&mut self, attributes: Option<VRFramebufferAttributes>) {
@@ -270,19 +248,20 @@ impl VRDisplay for VRExternalDisplay {
         if let Some(attributes) = attributes {
             self.attributes = attributes;
         }
-        let mut browser = self.shmem.browser();
-        browser.as_mut().layerState[0].type_ = mozgfx::VRLayerType_LayerType_Stereo_Immersive;
-        let count = browser.as_ref().layerState.len();
+        self.browser_state.layerState[0].type_ = mozgfx::VRLayerType_LayerType_Stereo_Immersive;
+        let count = self.browser_state.layerState.len();
         for i in 1..count {
-            browser.as_mut().layerState[i].type_ = mozgfx::VRLayerType_LayerType_None;
+            self.browser_state.layerState[i].type_ = mozgfx::VRLayerType_LayerType_None;
         }
-        browser.as_mut().presentationActive = true;
+        self.browser_state.presentationActive = true;
+        self.push_browser();
     }
 
     fn stop_present(&mut self) {
         if !self.presenting {
             return;
         }
-        self.shmem.browser().as_mut().presentationActive = false;
+        self.browser_state.presentationActive = true;
+        self.push_browser();
     }
 }
