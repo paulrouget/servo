@@ -10,7 +10,7 @@ use {
 };
 
 pub struct VRExternalDisplay {
-    last_sensor_frame_id: u64,
+    last_state: mozgfx::VRSystemState,
     rendered_layer: Option<VRLayer>,
     shmem: VRExternalShmemPtr,
     display_id: u32,
@@ -20,9 +20,9 @@ pub struct VRExternalDisplay {
 
 impl VRExternalDisplay {
     pub fn new(shmem: VRExternalShmemPtr) -> VRDisplayPtr {
-        let id = shmem.system().as_ref().sensorState.inputFrameID;
+        let last_state = shmem.system().as_ref().copy();
         Arc::new(RefCell::new(VRExternalDisplay {
-            last_sensor_frame_id: id,
+            last_state,
             rendered_layer: None,
             shmem,
             display_id: utils::new_id(),
@@ -36,19 +36,45 @@ impl VRExternalDisplay {
     fn block_until_sensor_state_changed(&mut self) {
         loop {
             {
-                let sys = self.shmem.system();
-                let id = sys.as_ref().sensorState.inputFrameID;
-                let _gen = sys.as_ref().displayState.mPresentingGeneration;
-                // FIXME: Note for reviewer: what to do if mPresentingGeneration changed?
-                let prev_id = self.last_sensor_frame_id;
-                if id != prev_id {
-                    self.last_sensor_frame_id = id;
+                let sys = self.shmem.system().as_ref().copy();
+                // let {
+                //     sensorState.inputFrameID: id,
+                //     displayState.mPresentingGeneration: gen,
+                //     displayState.mSuppressFrames: suppress_frames,
+                //     displayState.mIsConnected: is_connected,
+                // } = sys.as_ref();
+                if sys.displayState.mPresentingGeneration != self.last_state.displayState.mPresentingGeneration {
+                    // FIXME: return and exit
+                }
+                // FIXME: should I copy the state here?
+                /*
+                    We should handle some extra situations to exit the wait loop. See how this wait is implemented in Gecko
+
+                      // PullState blocks until we have a new id, the device is disconnected or mSuppressFrames has been set.
+                      PullState([&]() {
+                        return (mDisplayInfo.mDisplayState.mLastSubmittedFrameId >= aFrameId) ||
+                                mDisplayInfo.mDisplayState.mSuppressFrames ||
+                                !mDisplayInfo.mDisplayState.mIsConnected;
+                      });
+
+                      if (mDisplayInfo.mDisplayState.mSuppressFrames || !mDisplayInfo.mDisplayState.mIsConnected) {
+                        // External implementation wants to supress frames, service has shut down or hardware has been disconnected.
+                        return false;
+                      }
+
+                    Note, only the mPresentingGeneration change should trigger a servo WebVR session exit.
+                    The other situations (mSuppressFrames and disconnect) can last just one or a few frames so are recoverable
+                */
+                if sys.sensorState.inputFrameID != self.last_state.sensorState.inputFrameID {
+                    self.last_state = sys;
                     break;
                 }
+                // if id != prev_id {
+                //     self.last_sensor_frame_id = id;
+                //     break;
+                // }
             }
-            // FIXME: Note for reviewer: are we supposed to block here or the mutex blocking
-            // is good enough?
-            thread::sleep(Duration::from_millis(10));
+            // FIXME: We should block with the condition variable
         }
     }
 }
@@ -69,19 +95,19 @@ impl VRDisplay for VRExternalDisplay {
 
         let flags = state.mCapabilityFlags;
         data.capabilities.has_position =
-            (flags | mozgfx::VRDisplayCapabilityFlags_Cap_Position) != 0;
+            (flags & mozgfx::VRDisplayCapabilityFlags_Cap_Position) != 0;
         data.capabilities.can_present = (flags | mozgfx::VRDisplayCapabilityFlags_Cap_Present) != 0;
         data.capabilities.has_orientation =
-            (flags | mozgfx::VRDisplayCapabilityFlags_Cap_Orientation) != 0;
+            (flags & mozgfx::VRDisplayCapabilityFlags_Cap_Orientation) != 0;
         data.capabilities.has_external_display =
-            (flags | mozgfx::VRDisplayCapabilityFlags_Cap_External) != 0;
+            (flags & mozgfx::VRDisplayCapabilityFlags_Cap_External) != 0;
 
         data.stage_parameters = None;
 
         data.left_eye_parameters.offset = [
             state.mEyeTranslation[0].x,
             state.mEyeTranslation[0].y,
-            state.mEyeTranslation[0].y,
+            state.mEyeTranslation[0].z,
         ];
 
         data.left_eye_parameters.render_width = state.mEyeResolution.width as u32;
@@ -90,7 +116,7 @@ impl VRDisplay for VRExternalDisplay {
         data.right_eye_parameters.offset = [
             state.mEyeTranslation[1].x,
             state.mEyeTranslation[1].y,
-            state.mEyeTranslation[1].y,
+            state.mEyeTranslation[1].z,
         ];
 
         data.right_eye_parameters.render_width = state.mEyeResolution.width as u32;
@@ -112,7 +138,8 @@ impl VRDisplay for VRExternalDisplay {
         data
     }
 
-    fn immediate_frame_data(&self, near_z: f64, far_z: f64) -> VRFrameData {
+    fn inmediate_frame_data(&self, near_z: f64, far_z: f64) -> VRFrameData {
+        // FIXME: should I use a copy of the state here?
         let sys = self.shmem.system();
 
         let mut data = VRFrameData::default();
@@ -122,11 +149,10 @@ impl VRDisplay for VRExternalDisplay {
         data.left_view_matrix = sys.as_ref().sensorState.leftViewMatrix;
         data.right_view_matrix = sys.as_ref().sensorState.rightViewMatrix;
 
+        let right_handed = sys.controllerState[0].hand == mozgfx::ControllerHand_Right;
+
         let proj = |fov: mozgfx::VRFieldOfView| -> [f32; 16] {
             use std::f64::consts::PI;
-
-            // FIXME: Note for reviewer: How to get the handedness?
-            let right_handed = true;
 
             let up_tan = (fov.upDegrees * PI / 180.0).tan();
             let down_tan = (fov.downDegrees * PI / 180.0).tan();
@@ -162,10 +188,7 @@ impl VRDisplay for VRExternalDisplay {
     }
 
     fn synced_frame_data(&self, near_z: f64, far_z: f64) -> VRFrameData {
-        // FIXME: Note for reviewer: weren't we supposed to block like with sync_poses?
-        // self.block_until_sensor_state_changed();
-
-        self.immediate_frame_data(near_z, far_z)
+        self.inmediate_frame_data(near_z, far_z)
     }
 
     fn reset_pose(&mut self) {
