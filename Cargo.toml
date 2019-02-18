@@ -24,3 +24,8 @@ opt-level = 3
 #
 #     [patch."https://github.com/servo/<repository>"]
 #     <crate> = { path = "/path/to/local/checkout" }
+
+[patch."https://github.com/servo/webrender"]
+webrender = { path = "../webrender/webrender/" }
+webrender_api = { path = "../webrender/webrender_api/" }
+webrender_build = { path = "../webrender/webrender_build/" }

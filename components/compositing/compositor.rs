@@ -41,7 +41,7 @@ use std::rc::Rc;
 use style_traits::viewport::ViewportConstraints;
 use style_traits::{CSSPixel, DevicePixel, PinchZoomFactor};
 use time::{now, precise_time_ns, precise_time_s};
-use webrender_api::{self, DeviceIntPoint, DevicePoint, HitTestFlags, HitTestResult};
+use webrender_api::{self, DeviceIntPoint, DeviceIntSize, DevicePoint, HitTestFlags, HitTestResult};
 use webrender_api::{LayoutVector2D, ScrollLocation};
 
 #[derive(Debug, PartialEq)]
@@ -611,7 +611,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
 
         self.webrender_api.set_window_parameters(
             self.webrender_document,
-            self.embedder_coordinates.framebuffer,
+            self.embedder_coordinates.viewport,
             self.embedder_coordinates.viewport,
             self.embedder_coordinates.hidpi_factor.get(),
         );
@@ -646,9 +646,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
             self.update_zoom_transform();
         }
 
-        if self.embedder_coordinates.viewport == old_coords.viewport &&
-            self.embedder_coordinates.framebuffer == old_coords.framebuffer
-        {
+        if self.embedder_coordinates.viewport == old_coords.viewport {
             return;
         }
 
@@ -1183,12 +1181,9 @@ impl<Window: WindowMethods> IOCompositor<Window> {
         &mut self,
         target: CompositeTarget,
     ) -> Result<Option<Image>, UnableToComposite> {
-        let width = self.embedder_coordinates.framebuffer.to_u32().width_typed();
-        let height = self
-            .embedder_coordinates
-            .framebuffer
-            .to_u32()
-            .height_typed();
+        let bottom_right = self.embedder_coordinates.viewport.bottom_right().to_u32();
+        let width = bottom_right.x_typed();
+        let height = bottom_right.y_typed();
         if !self.window.prepare_for_composite() {
             return Err(UnableToComposite::WindowUnprepared);
         }
@@ -1235,9 +1230,9 @@ impl<Window: WindowMethods> IOCompositor<Window> {
 
                 // Paint the scene.
                 // TODO(gw): Take notice of any errors the renderer returns!
-                self.webrender
-                    .render(self.embedder_coordinates.framebuffer)
-                    .ok();
+                let point = self.embedder_coordinates.viewport.bottom_right();
+                let size = DeviceIntSize::from_lengths(point.x_typed(), point.y_typed());
+                self.webrender.render(size).ok();
             },
         );
 

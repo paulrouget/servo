@@ -163,8 +163,6 @@ pub struct EmbedderCoordinates {
     pub screen_avail: DeviceIntSize,
     /// Size of the native window.
     pub window: (DeviceIntSize, DeviceIntPoint),
-    /// Size of the GL buffer in the window.
-    pub framebuffer: DeviceIntSize,
     /// Coordinates of the document within the framebuffer.
     pub viewport: DeviceIntRect,
 }

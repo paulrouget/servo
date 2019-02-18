@@ -673,7 +673,9 @@ impl WindowMethods for Window {
     fn get_coordinates(&self) -> EmbedderCoordinates {
         match self.kind {
             WindowKind::Window(ref window, _) => {
-                // TODO(ajeffrey): can this fail?
+
+                let margins = TypedSize2D::new(200, 200);
+
                 let dpr = self.device_hidpi_factor();
                 let LogicalSize { width, height } = window
                     .get_outer_size()
@@ -681,20 +683,17 @@ impl WindowMethods for Window {
                 let LogicalPosition { x, y } = window
                     .get_position()
                     .unwrap_or(LogicalPosition::new(0., 0.));
-                let win_size = (TypedSize2D::new(width as f32, height as f32) * dpr).to_i32();
+                let win_size = (TypedSize2D::new(width as f32, height as f32) * dpr).to_i32() - margins * 2;
                 let win_origin = (TypedPoint2D::new(x as f32, y as f32) * dpr).to_i32();
                 let screen = (self.screen_size.to_f32() * dpr).to_i32();
 
-                let LogicalSize { width, height } = window
-                    .get_inner_size()
-                    .expect("Failed to get window inner size.");
-                let inner_size = (TypedSize2D::new(width as f32, height as f32) * dpr).to_i32();
+                let LogicalSize { width, height } = window.get_inner_size().expect("Failed to get window inner size.");
+                let inner_size = (TypedSize2D::new(width as f32, height as f32) * dpr).to_i32() - margins * 2;
 
                 let viewport = DeviceIntRect::new(TypedPoint2D::zero(), inner_size);
 
                 EmbedderCoordinates {
                     viewport: viewport,
-                    framebuffer: inner_size,
                     window: (win_size, win_origin),
                     screen: screen,
                     // FIXME: Glutin doesn't have API for available size. Fallback to screen size
@@ -708,7 +707,6 @@ impl WindowMethods for Window {
                     (TypedSize2D::new(context.width, context.height).to_f32() * dpr).to_i32();
                 EmbedderCoordinates {
                     viewport: DeviceIntRect::new(TypedPoint2D::zero(), size),
-                    framebuffer: size,
                     window: (size, TypedPoint2D::zero()),
                     screen: size,
                     screen_avail: size,
