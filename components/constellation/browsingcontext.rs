@@ -50,6 +50,9 @@ pub struct BrowsingContext {
     /// purposes of scheduling and resource management.
     pub is_visible: bool,
 
+    /// FIXME:
+    pub webrender_document: webrender_api::DocumentId,
+
     /// The pipeline for the current session history entry.
     pub pipeline_id: PipelineId,
 

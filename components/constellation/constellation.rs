@@ -242,10 +242,10 @@ pub struct Constellation<Message, LTF, STF> {
     /// constellation to send messages to the compositor thread.
     compositor_proxy: CompositorProxy,
 
-    /// The last frame tree sent to WebRender, denoting the browser (tab) user
-    /// has currently selected. This also serves as the key to retrieve data
-    /// about the current active browser from `browsers`.
-    active_browser_id: Option<TopLevelBrowsingContextId>,
+    // /// The last frame tree sent to WebRender, denoting the browser (tab) user
+    // /// has currently selected. This also serves as the key to retrieve data
+    // /// about the current active browser from `browsers`.
+    // active_browser_id: Option<TopLevelBrowsingContextId>,
 
     /// Bookkeeping data for all browsers in constellation.
     browsers: HashMap<TopLevelBrowsingContextId, Browser>,
@@ -302,9 +302,6 @@ pub struct Constellation<Message, LTF, STF> {
     /// A channel for the constellation to send messages to the
     /// timer thread.
     scheduler_chan: IpcSender<TimerSchedulerMsg>,
-
-    /// A single WebRender document the constellation operates on.
-    webrender_document: webrender_api::DocumentId,
 
     /// A channel for the constellation to send messages to the
     /// WebRender thread.
@@ -406,9 +403,6 @@ pub struct InitialConstellationState {
 
     /// A channel to the memory profiler thread.
     pub mem_profiler_chan: mem::ProfilerChan,
-
-    /// Webrender document ID.
-    pub webrender_document: webrender_api::DocumentId,
 
     /// Webrender API.
     pub webrender_api_sender: webrender_api::RenderApiSender,
@@ -696,7 +690,6 @@ where
                     webdriver: WebDriverData::new(),
                     scheduler_chan: TimerScheduler::start(),
                     document_states: HashMap::new(),
-                    webrender_document: state.webrender_document,
                     webrender_api_sender: state.webrender_api_sender,
                     shutting_down: false,
                     handled_warnings: VecDeque::new(),
@@ -748,6 +741,7 @@ where
         &mut self,
         pipeline_id: PipelineId,
         browsing_context_id: BrowsingContextId,
+        webrender_document: webrender_api::DocumentId,
         top_level_browsing_context_id: TopLevelBrowsingContextId,
         parent_pipeline_id: Option<PipelineId>,
         opener: Option<BrowsingContextId>,
@@ -838,7 +832,7 @@ where
             pipeline_namespace_id: self.next_pipeline_namespace_id(),
             prev_visibility: is_visible,
             webrender_api_sender: self.webrender_api_sender.clone(),
-            webrender_document: self.webrender_document,
+            webrender_document: webrender_document,
             webgl_chan: self
                 .webgl_threads
                 .as_ref()
@@ -1170,8 +1164,8 @@ where
             },
             // Create a new top level browsing context. Will use response_chan to return
             // the browsing context id.
-            FromCompositorMsg::NewBrowser(url, top_level_browsing_context_id) => {
-                self.handle_new_top_level_browsing_context(url, top_level_browsing_context_id);
+            FromCompositorMsg::NewBrowser(url, top_level_browsing_context_id, wr_doc) => {
+                self.handle_new_top_level_browsing_context(url, top_level_browsing_context_id, wr_doc);
             },
             // Close a top level browsing context.
             FromCompositorMsg::CloseBrowser(top_level_browsing_context_id) => {
@@ -1714,6 +1708,7 @@ where
         let window_size = browsing_context.size;
         let pipeline_id = browsing_context.pipeline_id;
         let is_visible = browsing_context.is_visible;
+        let wr_doc = browsing_context.webrender_document;
 
         let pipeline = match self.pipelines.get(&pipeline_id) {
             Some(p) => p,
@@ -1744,6 +1739,7 @@ where
             new_pipeline_id,
             browsing_context_id,
             top_level_browsing_context_id,
+            wr_doc
             None,
             opener,
             window_size,
@@ -1819,6 +1815,7 @@ where
         &mut self,
         url: ServoUrl,
         top_level_browsing_context_id: TopLevelBrowsingContextId,
+        webrender_document: webrender_api::DocumentId,
     ) {
         let window_size = self.window_size.initial_viewport;
         let pipeline_id = PipelineId::new();
@@ -1847,6 +1844,7 @@ where
             pipeline_id,
             browsing_context_id,
             top_level_browsing_context_id,
+            webrender_document,
             None,
             None,
             window_size,
@@ -1991,7 +1989,7 @@ where
             LoadData::new(url, Some(parent_pipeline_id), None, None)
         });
 
-        let is_parent_private = {
+        let (is_parent_private, wr_doc) = {
             let parent_browsing_context_id = match self.pipelines.get(&parent_pipeline_id) {
                 Some(pipeline) => pipeline.browsing_context_id,
                 None => {
@@ -2001,16 +1999,15 @@ where
                     );
                 },
             };
-            let is_parent_private = match self.browsing_contexts.get(&parent_browsing_context_id) {
-                Some(ctx) => ctx.is_private,
+            match self.browsing_contexts.get(&parent_browsing_context_id) {
+                Some(ctx) => (ctx.is_private, ctx.webrender_document),
                 None => {
                     return warn!(
                         "Script loaded url in iframe {} in closed parent browsing context {}.",
                         browsing_context_id, parent_browsing_context_id,
                     );
                 },
-            };
-            is_parent_private
+            }
         };
         let is_private = is_private || is_parent_private;
 
@@ -2035,6 +2032,7 @@ where
             new_pipeline_id,
             browsing_context_id,
             top_level_browsing_context_id,
+            wr_docm
             Some(parent_pipeline_id),
             None,
             browsing_context.size,
@@ -2293,7 +2291,7 @@ where
                 return None;
             },
         };
-        let (window_size, pipeline_id, parent_pipeline_id, is_private, is_visible) =
+        let (window_size, pipeline_id, parent_pipeline_id, is_private, is_visible, wr_doc) =
             match self.browsing_contexts.get(&browsing_context_id) {
                 Some(ctx) => (
                     ctx.size,
@@ -2301,6 +2299,7 @@ where
                     ctx.parent_pipeline_id,
                     ctx.is_private,
                     ctx.is_visible,
+                    ctx.webrender_document,
                 ),
                 None => {
                     // This should technically never happen (since `load_url` is
@@ -2374,6 +2373,7 @@ where
                     new_pipeline_id,
                     browsing_context_id,
                     top_level_browsing_context_id,
+                    wr_doc,
                     None,
                     opener,
                     window_size,
@@ -2670,6 +2670,7 @@ where
                     window_size,
                     is_private,
                     is_visible,
+                    wr_doc,
                 ) = match self.browsing_contexts.get(&browsing_context_id) {
                     Some(ctx) => (
                         ctx.top_level_id,
@@ -2678,6 +2679,7 @@ where
                         ctx.size,
                         ctx.is_private,
                         ctx.is_visible,
+                        ctx.webrender_document,
                     ),
                     None => return warn!("No browsing context to traverse!"),
                 };
@@ -2690,6 +2692,7 @@ where
                     new_pipeline_id,
                     browsing_context_id,
                     top_level_id,
+                    wr_doc,
                     parent_pipeline_id,
                     opener,
                     window_size,

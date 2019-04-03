@@ -178,15 +178,12 @@ pub struct EmbedderCoordinates {
     pub window: (DeviceIntSize, DeviceIntPoint),
     /// Size of the GL buffer in the window.
     pub framebuffer: FramebufferIntSize,
-    /// Coordinates of the document within the framebuffer.
-    pub viewport: DeviceIntRect,
 }
 
 impl EmbedderCoordinates {
-    pub fn get_flipped_viewport(&self) -> FramebufferIntRect {
+    pub fn get_flipped_viewport(&self, viewport: DeviceIntRect) -> FramebufferIntRect {
         let fb_height = self.framebuffer.height;
-        let mut view = self.viewport.clone();
-        view.origin.y = fb_height - view.origin.y - view.size.height;
-        FramebufferIntRect::from_untyped(&view.to_untyped())
+        viewport.origin.y = fb_height - viewport.origin.y - viewport.size.height;
+        FramebufferIntRect::from_untyped(&viewport.to_untyped())
     }
 }

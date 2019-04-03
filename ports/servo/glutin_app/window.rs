@@ -281,6 +281,8 @@ impl Window {
             inner_size: Cell::new(inner_size),
             screen_size,
             suspended: Cell::new(false),
+            content_wr_doc: ???, 
+            chrome_wr_doc: ???,
         };
 
         window.present();
@@ -687,6 +689,19 @@ impl WindowMethods for Window {
         self.gl.clone()
     }
 
+    fn get_area_coordinates(&self, area: AreaId) -> DeviceIntRect<i32> {
+        let mut coords = self.get_coordinates().framebuffer;
+        if area == self.content_area_id {
+            coords.size.height = c.height - 100;
+            coords.origin.y = 100;
+        } else if area == self.chrome_area_id {
+            coords.size.height = 100;
+        } else {
+            error!("Unexpected AreaId: {}", area);
+        };
+        coords
+    }
+
     fn get_coordinates(&self) -> EmbedderCoordinates {
         match self.kind {
             WindowKind::Window(ref window, _) => {
@@ -710,7 +725,6 @@ impl WindowMethods for Window {
                 let framebuffer = FramebufferIntSize::from_untyped(&viewport.size.to_untyped());
 
                 EmbedderCoordinates {
-                    viewport,
                     framebuffer,
                     window: (win_size, win_origin),
                     screen: screen,
@@ -723,10 +737,8 @@ impl WindowMethods for Window {
                 let dpr = self.servo_hidpi_factor();
                 let size =
                     (TypedSize2D::new(context.width, context.height).to_f32() * dpr).to_i32();
-                let viewport = DeviceIntRect::new(TypedPoint2D::zero(), size);
                 let framebuffer = FramebufferIntSize::from_untyped(&size.to_untyped());
                 EmbedderCoordinates {
-                    viewport,
                     framebuffer,
                     window: (size, TypedPoint2D::zero()),
                     screen: size,

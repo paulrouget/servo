@@ -138,9 +138,11 @@ pub fn main() {
 
     let target_url = cmdline_url.or(pref_url).or(blank_url).unwrap();
 
+    let content_area = window.content_area_id();
+
     let mut servo = Servo::new(window.clone());
     let browser_id = BrowserId::new();
-    servo.handle_events(vec![WindowEvent::NewBrowser(target_url, browser_id)]);
+    servo.handle_events(vec![WindowEvent::NewBrowser(target_url, browser_id, content_area)]);
 
     servo.setup_logging();
 
