@@ -128,7 +128,7 @@ pub use servo_url as url;
 /// loop to pump messages between the embedding application and
 /// various browser components.
 pub struct Servo<Window: WindowMethods + 'static> {
-    compositor: IOCompositor<Window>,
+    compositor: Option<IOCompositor<Window>>,
     constellation_chan: Sender<ConstellationMsg>,
     embedder_receiver: EmbedderReceiver,
     embedder_events: Vec<(Option<BrowserId>, EmbedderMsg)>,
@@ -315,7 +315,7 @@ where
         );
 
         Servo {
-            compositor: compositor,
+            compositor: Some(compositor),
             constellation_chan: constellation_chan,
             embedder_receiver: embedder_receiver,
             embedder_events: Vec::new(),
@@ -328,11 +328,15 @@ where
             WindowEvent::Idle => {},
 
             WindowEvent::Refresh => {
-                self.compositor.composite();
+                if let Some(compositor) = &mut self.compositor {
+                    compositor.composite();
+                }
             },
 
             WindowEvent::Resize => {
-                self.compositor.on_resize_window_event();
+                if let Some(compositor) = &mut self.compositor {
+                    compositor.on_resize_window_event();
+                }
             },
 
             WindowEvent::AllowNavigationResponse(pipeline_id, allowed) => {
@@ -353,33 +357,45 @@ where
             },
 
             WindowEvent::MouseWindowEventClass(mouse_window_event) => {
-                self.compositor
-                    .on_mouse_window_event_class(mouse_window_event);
+                if let Some(compositor) = &mut self.compositor {
+                    compositor.on_mouse_window_event_class(mouse_window_event);
+                }
             },
 
             WindowEvent::MouseWindowMoveEventClass(cursor) => {
-                self.compositor.on_mouse_window_move_event_class(cursor);
+                if let Some(compositor) = &mut self.compositor {
+                    compositor.on_mouse_window_move_event_class(cursor);
+                }
             },
 
             WindowEvent::Touch(event_type, identifier, location) => {
-                self.compositor
-                    .on_touch_event(event_type, identifier, location);
+                if let Some(compositor) = &mut self.compositor {
+                    compositor.on_touch_event(event_type, identifier, location);
+                }
             },
 
             WindowEvent::Scroll(delta, cursor, phase) => {
-                self.compositor.on_scroll_event(delta, cursor, phase);
+                if let Some(compositor) = &mut self.compositor {
+                    compositor.on_scroll_event(delta, cursor, phase);
+                }
             },
 
             WindowEvent::Zoom(magnification) => {
-                self.compositor.on_zoom_window_event(magnification);
+                if let Some(compositor) = &mut self.compositor {
+                    compositor.on_zoom_window_event(magnification);
+                }
             },
 
             WindowEvent::ResetZoom => {
-                self.compositor.on_zoom_reset_window_event();
+                if let Some(compositor) = &mut self.compositor {
+                    compositor.on_zoom_reset_window_event();
+                }
             },
 
             WindowEvent::PinchZoom(magnification) => {
-                self.compositor.on_pinch_zoom_window_event(magnification);
+                if let Some(compositor) = &mut self.compositor {
+                    compositor.on_pinch_zoom_window_event(magnification);
+                }
             },
 
             WindowEvent::Navigation(top_level_browsing_context_id, direction) => {
@@ -398,7 +414,9 @@ where
             },
 
             WindowEvent::Quit => {
-                self.compositor.maybe_start_shutting_down();
+                if let Some(compositor) = &mut self.compositor {
+                    compositor.maybe_start_shutting_down();
+                }
             },
 
             WindowEvent::ExitFullScreen(top_level_browsing_context_id) => {
@@ -428,11 +446,15 @@ where
             },
 
             WindowEvent::ToggleWebRenderDebug(option) => {
-                self.compositor.toggle_webrender_debug(option);
+                if let Some(compositor) = &mut self.compositor {
+                    compositor.toggle_webrender_debug(option);
+                }
             },
 
             WindowEvent::CaptureWebRender => {
-                self.compositor.capture_webrender();
+                if let Some(compositor) = &mut self.compositor {
+                    compositor.capture_webrender();
+                }
             },
 
             WindowEvent::NewBrowser(url, browser_id) => {
@@ -481,23 +503,14 @@ where
         while let Some((top_level_browsing_context, msg)) =
             self.embedder_receiver.try_recv_embedder_msg()
         {
-            match (msg, self.compositor.shutdown_state) {
-                (_, ShutdownState::FinishedShuttingDown) => {
-                    error!(
-                        "embedder shouldn't be handling messages after compositor has shut down"
-                    );
-                },
-
-                (_, ShutdownState::ShuttingDown) => {},
-
-                (EmbedderMsg::Keyboard(key_event), ShutdownState::NotShuttingDown) => {
-                    let event = (top_level_browsing_context, EmbedderMsg::Keyboard(key_event));
-                    self.embedder_events.push(event);
-                },
-
-                (msg, ShutdownState::NotShuttingDown) => {
-                    self.embedder_events.push((top_level_browsing_context, msg));
-                },
+            if let Some(compositor) = &mut self.compositor {
+                match compositor.shutdown_state {
+                    ShutdownState::NotShuttingDown => self.embedder_events.push((top_level_browsing_context, msg)),
+                    ShutdownState::ShuttingDown => {},
+                    ShutdownState::FinishedShuttingDown => error!("Embedder should not gather message at that point"),
+                };
+            } else {
+                error!("Embedder should not gather message at that point");
             }
         }
     }
@@ -507,25 +520,38 @@ where
     }
 
     pub fn handle_events(&mut self, events: Vec<WindowEvent>) {
-        if self.compositor.receive_messages() {
-            self.receive_messages();
+        if let Some(compositor) = &mut self.compositor {
+            if compositor.receive_messages() {
+                self.receive_messages();
+            }
         }
         for event in events {
             self.handle_window_event(event);
         }
-        if self.compositor.shutdown_state != ShutdownState::FinishedShuttingDown {
-            self.compositor.perform_updates();
-        } else {
-            self.embedder_events.push((None, EmbedderMsg::Shutdown));
+        if let Some(compositor) = &mut self.compositor {
+            if compositor.shutdown_state == ShutdownState::FinishedShuttingDown {
+                // FIXME: rename to compositor shutdown
+                // FIXME: maybe set compositor to None here?
+                self.embedder_events.push((None, EmbedderMsg::Shutdown));
+            } else {
+                compositor.perform_updates();
+            }
         }
     }
 
     pub fn repaint_synchronously(&mut self) {
-        self.compositor.repaint_synchronously()
+        if let Some(compositor) = &mut self.compositor {
+            compositor.repaint_synchronously()
+        }
     }
 
     pub fn pinch_zoom_level(&self) -> f32 {
-        self.compositor.pinch_zoom_level()
+        if let Some(compositor) = &self.compositor {
+            compositor.pinch_zoom_level()
+        } else {
+            error!("No compositor");
+            0.0 // FIXME
+        }
     }
 
     pub fn setup_logging(&self) {
@@ -541,8 +567,15 @@ where
         log::set_max_level(filter);
     }
 
-    pub fn deinit(self) {
-        self.compositor.deinit();
+    pub fn shutdown_compositor(&mut self) {
+        let compositor = self.compositor.take();
+        if let Some(compositor) = compositor {
+            compositor.deinit();
+        }
+    }
+
+    pub fn deinit(mut self) {
+        self.shutdown_compositor();
     }
 }
 
