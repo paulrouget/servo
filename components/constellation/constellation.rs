@@ -238,10 +238,6 @@ pub struct Constellation<Message, LTF, STF> {
     /// A channel through which messages can be sent to the embedder.
     embedder_proxy: EmbedderProxy,
 
-    /// A channel (the implementation of which is port-specific) for the
-    /// constellation to send messages to the compositor thread.
-    compositor_proxy: CompositorProxy,
-
     /// The last frame tree sent to WebRender, denoting the browser (tab) user
     /// has currently selected. This also serves as the key to retrieve data
     /// about the current active browser from `browsers`.
@@ -303,13 +299,6 @@ pub struct Constellation<Message, LTF, STF> {
     /// timer thread.
     scheduler_chan: IpcSender<TimerSchedulerMsg>,
 
-    /// A single WebRender document the constellation operates on.
-    webrender_document: webrender_api::DocumentId,
-
-    /// A channel for the constellation to send messages to the
-    /// WebRender thread.
-    webrender_api_sender: webrender_api::RenderApiSender,
-
     /// The set of all event loops in the browser.
     /// We store the event loops in a map
     /// indexed by registered domain name (as a `Host`) to event loops.
@@ -335,9 +324,6 @@ pub struct Constellation<Message, LTF, STF> {
     /// Pipeline IDs are namespaced in order to avoid name collisions,
     /// and the namespaces are allocated by the constellation.
     next_pipeline_namespace_id: PipelineNamespaceId,
-
-    /// The size of the top-level window.
-    window_size: WindowSizeData,
 
     /// Means of accessing the clipboard
     clipboard_ctx: Option<ClipboardContext>,
@@ -373,6 +359,25 @@ pub struct Constellation<Message, LTF, STF> {
 
     /// Navigation requests from script awaiting approval from the embedder.
     pending_approval_navigations: PendingApprovalNavigations,
+
+    /// All compositor-related data.
+    compositor_info: Option<CompositorInfo>,
+}
+
+struct CompositorInfo {
+    /// A channel (the implementation of which is port-specific) for the
+    /// constellation to send messages to the compositor thread.
+    compositor_proxy: CompositorProxy,
+
+    /// A single WebRender document the constellation operates on.
+    webrender_document: webrender_api::DocumentId,
+
+    /// A channel for the constellation to send messages to the
+    /// WebRender thread.
+    webrender_api_sender: webrender_api::RenderApiSender,
+
+    /// The size of the top-level window.
+    window_size: WindowSizeData,
 }
 
 /// State needed to construct a constellation.
@@ -657,7 +662,6 @@ where
                     network_listener_sender: network_listener_sender,
                     network_listener_receiver: network_listener_receiver,
                     embedder_proxy: state.embedder_proxy,
-                    compositor_proxy: state.compositor_proxy,
                     active_browser_id: None,
                     browsers: HashMap::new(),
                     debugger_chan: state.debugger_chan,
@@ -678,13 +682,6 @@ where
                     next_pipeline_namespace_id: PipelineNamespaceId(2),
                     time_profiler_chan: state.time_profiler_chan,
                     mem_profiler_chan: state.mem_profiler_chan,
-                    window_size: WindowSizeData {
-                        initial_viewport: opts::get().initial_window_size.to_f32() *
-                            TypedScale::new(1.0),
-                        device_pixel_ratio: TypedScale::new(
-                            opts::get().device_pixels_per_px.unwrap_or(1.0),
-                        ),
-                    },
                     phantom: PhantomData,
                     clipboard_ctx: match ClipboardContext::new() {
                         Ok(c) => Some(c),
@@ -696,8 +693,6 @@ where
                     webdriver: WebDriverData::new(),
                     scheduler_chan: TimerScheduler::start(),
                     document_states: HashMap::new(),
-                    webrender_document: state.webrender_document,
-                    webrender_api_sender: state.webrender_api_sender,
                     shutting_down: false,
                     handled_warnings: VecDeque::new(),
                     random_pipeline_closure: opts::get().random_pipeline_closure_probability.map(
@@ -715,6 +710,18 @@ where
                     webvr_chan: state.webvr_chan,
                     canvas_chan: CanvasPaintThread::start(),
                     pending_approval_navigations: HashMap::new(),
+                    compositor_info: Some(CompositorInfo {
+                        compositor_proxy: state.compositor_proxy,
+                        webrender_document: state.webrender_document,
+                        webrender_api_sender: state.webrender_api_sender,
+                        window_size: WindowSizeData {
+                            initial_viewport: opts::get().initial_window_size.to_f32() *
+                                TypedScale::new(1.0),
+                            device_pixel_ratio: TypedScale::new(
+                                opts::get().device_pixels_per_px.unwrap_or(1.0),
+                            ),
+                        },
+                    }),
                 };
 
                 constellation.run();
@@ -722,6 +729,10 @@ where
             .expect("Thread spawning failed");
 
         (compositor_sender, swmanager_sender)
+    }
+
+    fn compositor_proxy(&self) -> &CompositorProxy {
+        &self.compositor_info.as_ref().unwrap().compositor_proxy
     }
 
     /// The main event loop for the constellation.
@@ -823,7 +834,7 @@ where
                 .clone(),
             layout_to_constellation_chan: self.layout_sender.clone(),
             scheduler_chan: self.scheduler_chan.clone(),
-            compositor_proxy: self.compositor_proxy.clone(),
+            compositor_proxy: self.compositor_proxy().clone(),
             devtools_chan: self.devtools_chan.clone(),
             bluetooth_thread: self.bluetooth_thread.clone(),
             swmanager_thread: self.swmanager_sender.clone(),
@@ -834,11 +845,11 @@ where
             window_size: initial_window_size,
             event_loop,
             load_data,
-            device_pixel_ratio: self.window_size.device_pixel_ratio,
+            device_pixel_ratio: self.compositor_info.as_ref().unwrap().window_size.device_pixel_ratio,
             pipeline_namespace_id: self.next_pipeline_namespace_id(),
             prev_visibility: is_visible,
-            webrender_api_sender: self.webrender_api_sender.clone(),
-            webrender_document: self.webrender_document,
+            webrender_api_sender: self.compositor_info.as_ref().unwrap().webrender_api_sender.clone(),
+            webrender_document: self.compositor_info.as_ref().unwrap().webrender_document,
             webgl_chan: self
                 .webgl_threads
                 .as_ref()
@@ -1162,7 +1173,7 @@ where
                     println!("got ready to save image query, result is {:?}", is_ready);
                 }
                 let is_ready = is_ready == ReadyToSave::Ready;
-                self.compositor_proxy
+                self.compositor_proxy()
                     .send(ToCompositorMsg::IsReadyToSaveImageReply(is_ready));
                 if opts::get().is_running_problem_test {
                     println!("sent response");
@@ -1376,22 +1387,22 @@ where
                 self.document_states.insert(source_pipeline_id, state);
             },
             FromScriptMsg::GetClientWindow(send) => {
-                self.compositor_proxy
+                self.compositor_proxy()
                     .send(ToCompositorMsg::GetClientWindow(send));
             },
             FromScriptMsg::GetScreenSize(send) => {
-                self.compositor_proxy
+                self.compositor_proxy()
                     .send(ToCompositorMsg::GetScreenSize(send));
             },
             FromScriptMsg::GetScreenAvailSize(send) => {
-                self.compositor_proxy
+                self.compositor_proxy()
                     .send(ToCompositorMsg::GetScreenAvailSize(send));
             },
             FromScriptMsg::LogEntry(thread_name, entry) => {
                 self.handle_log_entry(Some(source_top_ctx_id), thread_name, entry);
             },
             FromScriptMsg::TouchEventProcessed(result) => self
-                .compositor_proxy
+                .compositor_proxy()
                 .send(ToCompositorMsg::TouchEventProcessed(result)),
             FromScriptMsg::GetBrowsingContextInfo(pipeline_id, sender) => {
                 let result = self
@@ -1660,7 +1671,7 @@ where
         }
 
         debug!("Asking compositor to complete shutdown.");
-        self.compositor_proxy
+        self.compositor_proxy()
             .send(ToCompositorMsg::ShutdownComplete);
     }
 
@@ -1820,7 +1831,7 @@ where
         url: ServoUrl,
         top_level_browsing_context_id: TopLevelBrowsingContextId,
     ) {
-        let window_size = self.window_size.initial_viewport;
+        let window_size = self.compositor_info.as_ref().unwrap().window_size.initial_viewport;
         let pipeline_id = PipelineId::new();
         let msg = (
             Some(top_level_browsing_context_id),
@@ -1884,7 +1895,7 @@ where
         for IFrameSizeMsg { data, type_ } in iframe_sizes {
             let window_size = WindowSizeData {
                 initial_viewport: data.size,
-                device_pixel_ratio: self.window_size.device_pixel_ratio,
+                device_pixel_ratio: self.compositor_info.as_ref().unwrap().window_size.device_pixel_ratio,
             };
 
             self.resize_browsing_context(window_size, type_, data.id);
@@ -2095,7 +2106,7 @@ where
             None,
             script_sender,
             layout_sender,
-            self.compositor_proxy.clone(),
+            self.compositor_proxy().clone(),
             url,
             is_parent_visible,
             load_data,
@@ -2161,7 +2172,7 @@ where
             Some(opener_browsing_context_id),
             script_sender,
             layout_sender,
-            self.compositor_proxy.clone(),
+            self.compositor_proxy().clone(),
             url,
             is_opener_visible,
             load_data,
@@ -2191,7 +2202,7 @@ where
     }
 
     fn handle_pending_paint_metric(&self, pipeline_id: PipelineId, epoch: Epoch) {
-        self.compositor_proxy
+        self.compositor_proxy()
             .send(ToCompositorMsg::PendingPaintMetric(pipeline_id, epoch))
     }
 
@@ -2205,7 +2216,7 @@ where
         pipeline_id: PipelineId,
         animation_state: AnimationState,
     ) {
-        self.compositor_proxy
+        self.compositor_proxy()
             .send(ToCompositorMsg::ChangeRunningAnimationsState(
                 pipeline_id,
                 animation_state,
@@ -2464,7 +2475,7 @@ where
 
             if !current_top_level_pipeline_will_be_replaced {
                 // Notify embedder and compositor top level document finished loading.
-                self.compositor_proxy
+                self.compositor_proxy()
                     .send(ToCompositorMsg::LoadComplete(top_level_browsing_context_id));
                 self.embedder_proxy.send((
                     Some(top_level_browsing_context_id),
@@ -3108,7 +3119,7 @@ where
         size: Size2D<u32>,
         response_sender: IpcSender<(IpcSender<CanvasMsg>, CanvasId)>,
     ) {
-        let webrender_api = self.webrender_api_sender.clone();
+        let webrender_api = self.compositor_info.as_ref().unwrap().webrender_api_sender.clone();
         let sender = self.canvas_chan.clone();
         let (canvas_id_sender, canvas_id_receiver) =
             ipc::channel::<CanvasId>().expect("ipc channel failure");
@@ -3135,7 +3146,7 @@ where
         // and pass the event to that script thread.
         match msg {
             WebDriverCommandMsg::GetWindowSize(_, reply) => {
-                let _ = reply.send(self.window_size);
+                let _ = reply.send(self.compositor_info.as_ref().unwrap().window_size);
             },
             WebDriverCommandMsg::SetWindowSize(top_level_browsing_context_id, size, reply) => {
                 self.webdriver.resize_channel = Some(reply);
@@ -3215,7 +3226,7 @@ where
                 }
             },
             WebDriverCommandMsg::TakeScreenshot(_, reply) => {
-                self.compositor_proxy
+                self.compositor_proxy()
                     .send(ToCompositorMsg::CreatePng(reply));
             },
         }
@@ -3415,7 +3426,7 @@ where
                     change.top_level_browsing_context_id,
                     change.new_pipeline_id,
                     new_context_info.parent_pipeline_id,
-                    self.window_size.initial_viewport, //XXXjdm is this valid?
+                    self.compositor_info.as_ref().unwrap().window_size.initial_viewport, //XXXjdm is this valid?
                     new_context_info.is_private,
                     new_context_info.is_visible,
                 );
@@ -3664,7 +3675,7 @@ where
             let _ = resize_channel.send(new_size);
         }
 
-        self.window_size = new_size;
+        self.compositor_info.as_mut().unwrap().window_size = new_size;
     }
 
     /// Called when the window exits from fullscreen mode
@@ -3682,7 +3693,7 @@ where
         pipeline_id: PipelineId,
         constraints: ViewportConstraints,
     ) {
-        self.compositor_proxy
+        self.compositor_proxy()
             .send(ToCompositorMsg::ViewportConstrained(
                 pipeline_id,
                 constraints,
@@ -4211,7 +4222,7 @@ where
                 browsing_context_id
             );
             self.active_browser_id = Some(top_level_browsing_context_id);
-            self.compositor_proxy
+            self.compositor_proxy()
                 .send(ToCompositorMsg::SetFrameTree(frame_tree));
         }
     }
