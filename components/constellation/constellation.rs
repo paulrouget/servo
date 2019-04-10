@@ -257,10 +257,6 @@ pub struct Constellation<Message, LTF, STF> {
     /// browsing.
     private_resource_threads: ResourceThreads,
 
-    /// A channel for the constellation to send messages to the font
-    /// cache thread.
-    font_cache_thread: FontCacheThread,
-
     /// A channel for the constellation to send messages to the
     /// debugger thread.
     debugger_chan: Option<debugger::Sender>,
@@ -348,9 +344,6 @@ pub struct Constellation<Message, LTF, STF> {
     /// Phantom data that keeps the Rust type system happy.
     phantom: PhantomData<(Message, LTF, STF)>,
 
-    /// Entry point to create and get channels to a WebGLThread.
-    webgl_threads: Option<WebGLThreads>,
-
     /// A channel through which messages can be sent to the webvr thread.
     webvr_chan: Option<IpcSender<WebVRMsg>>,
 
@@ -364,29 +357,33 @@ pub struct Constellation<Message, LTF, STF> {
     compositor_info: Option<CompositorInfo>,
 }
 
-struct CompositorInfo {
+pub struct CompositorInfo {
     /// A channel (the implementation of which is port-specific) for the
     /// constellation to send messages to the compositor thread.
-    compositor_proxy: CompositorProxy,
+    pub compositor_proxy: CompositorProxy,
 
     /// A single WebRender document the constellation operates on.
-    webrender_document: webrender_api::DocumentId,
+    pub webrender_document: webrender_api::DocumentId,
 
     /// A channel for the constellation to send messages to the
     /// WebRender thread.
-    webrender_api_sender: webrender_api::RenderApiSender,
+    pub webrender_api_sender: webrender_api::RenderApiSender,
 
     /// The size of the top-level window.
-    window_size: WindowSizeData,
+    pub window_size: WindowSizeData,
+
+    /// A channel for the constellation to send messages to the font
+    /// cache thread.
+    pub font_cache_thread: FontCacheThread,
+
+    /// Entry point to create and get channels to a WebGLThread.
+    pub webgl_threads: Option<WebGLThreads>,
 }
 
 /// State needed to construct a constellation.
 pub struct InitialConstellationState {
     /// A channel through which messages can be sent to the embedder.
     pub embedder_proxy: EmbedderProxy,
-
-    /// A channel through which messages can be sent to the compositor.
-    pub compositor_proxy: CompositorProxy,
 
     /// A channel to the debugger, if applicable.
     pub debugger_chan: Option<debugger::Sender>,
@@ -396,9 +393,6 @@ pub struct InitialConstellationState {
 
     /// A channel to the bluetooth thread.
     pub bluetooth_thread: IpcSender<BluetoothRequest>,
-
-    /// A channel to the font cache thread.
-    pub font_cache_thread: FontCacheThread,
 
     /// A channel to the resource thread.
     pub public_resource_threads: ResourceThreads,
@@ -411,15 +405,6 @@ pub struct InitialConstellationState {
 
     /// A channel to the memory profiler thread.
     pub mem_profiler_chan: mem::ProfilerChan,
-
-    /// Webrender document ID.
-    pub webrender_document: webrender_api::DocumentId,
-
-    /// Webrender API.
-    pub webrender_api_sender: webrender_api::RenderApiSender,
-
-    /// Entry point to create and get channels to a WebGLThread.
-    pub webgl_threads: Option<WebGLThreads>,
 
     /// A channel to the webgl thread.
     pub webvr_chan: Option<IpcSender<WebVRMsg>>,
@@ -669,7 +654,6 @@ where
                     bluetooth_thread: state.bluetooth_thread,
                     public_resource_threads: state.public_resource_threads,
                     private_resource_threads: state.private_resource_threads,
-                    font_cache_thread: state.font_cache_thread,
                     swmanager_chan: None,
                     swmanager_receiver: swmanager_receiver,
                     swmanager_sender: sw_mgr_clone,
@@ -706,22 +690,10 @@ where
                             (rng, prob)
                         },
                     ),
-                    webgl_threads: state.webgl_threads,
                     webvr_chan: state.webvr_chan,
                     canvas_chan: CanvasPaintThread::start(),
                     pending_approval_navigations: HashMap::new(),
-                    compositor_info: Some(CompositorInfo {
-                        compositor_proxy: state.compositor_proxy,
-                        webrender_document: state.webrender_document,
-                        webrender_api_sender: state.webrender_api_sender,
-                        window_size: WindowSizeData {
-                            initial_viewport: opts::get().initial_window_size.to_f32() *
-                                TypedScale::new(1.0),
-                            device_pixel_ratio: TypedScale::new(
-                                opts::get().device_pixels_per_px.unwrap_or(1.0),
-                            ),
-                        },
-                    }),
+                    compositor_info: None,
                 };
 
                 constellation.run();
@@ -729,6 +701,10 @@ where
             .expect("Thread spawning failed");
 
         (compositor_sender, swmanager_sender)
+    }
+
+    fn on_compositor_ready(&mut self, state: CompositorInfo) {
+        self.compositor_info = Some(state);
     }
 
     fn compositor_proxy(&self) -> &CompositorProxy {
@@ -838,7 +814,7 @@ where
             devtools_chan: self.devtools_chan.clone(),
             bluetooth_thread: self.bluetooth_thread.clone(),
             swmanager_thread: self.swmanager_sender.clone(),
-            font_cache_thread: self.font_cache_thread.clone(),
+            font_cache_thread: self.compositor_info.as_ref().unwrap().font_cache_thread.clone(),
             resource_threads,
             time_profiler_chan: self.time_profiler_chan.clone(),
             mem_profiler_chan: self.mem_profiler_chan.clone(),
@@ -850,10 +826,7 @@ where
             prev_visibility: is_visible,
             webrender_api_sender: self.compositor_info.as_ref().unwrap().webrender_api_sender.clone(),
             webrender_document: self.compositor_info.as_ref().unwrap().webrender_document,
-            webgl_chan: self
-                .webgl_threads
-                .as_ref()
-                .map(|threads| threads.pipeline()),
+            webgl_chan: self.compositor_info.as_ref().unwrap().webgl_threads.as_ref().map(|threads| threads.pipeline()),
             webvr_chan: self.webvr_chan.clone(),
         });
 
@@ -1640,12 +1613,13 @@ where
             warn!("Exit Canvas Paint thread failed ({})", e);
         }
 
-        if let Some(webgl_threads) = self.webgl_threads.as_ref() {
-            debug!("Exiting WebGL thread.");
-            if let Err(e) = webgl_threads.exit() {
-                warn!("Exit WebGL Thread failed ({})", e);
-            }
-        }
+        // FIXME
+        // if let Some(webgl_threads) = self.webgl_threads.as_ref() {
+        //     debug!("Exiting WebGL thread.");
+        //     if let Err(e) = webgl_threads.exit() {
+        //         warn!("Exit WebGL Thread failed ({})", e);
+        //     }
+        // }
 
         if let Some(chan) = self.webvr_chan.as_ref() {
             debug!("Exiting WebVR thread.");
@@ -1660,7 +1634,8 @@ where
         }
 
         debug!("Exiting font cache thread.");
-        self.font_cache_thread.exit();
+        // FIXME: this should be part of the compositor
+        self.compositor_info.as_ref().unwrap().font_cache_thread.exit();
 
         // Receive exit signals from threads.
         if let Err(e) = core_receiver.recv() {

@@ -327,6 +327,7 @@ impl<Window: WindowMethods> IOCompositor<Window> {
     }
 
     fn finish_shutting_down(&mut self) {
+        // FIXME: now compositor shoudl shutdown before constellation
         debug!("Compositor received message that constellation shutdown is complete");
 
         // Drain compositor port, sometimes messages contain channels that are blocking

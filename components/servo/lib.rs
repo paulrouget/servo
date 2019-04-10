@@ -77,7 +77,7 @@ use compositing::{CompositingReason, IOCompositor, ShutdownState};
     not(target_arch = "aarch64")
 ))]
 use constellation::content_process_sandbox_profile;
-use constellation::{Constellation, InitialConstellationState, UnprivilegedPipelineContent};
+use constellation::{Constellation, CompositorInfo, InitialConstellationState, UnprivilegedPipelineContent};
 use constellation::{FromCompositorLogger, FromScriptLogger};
 use crossbeam_channel::{unbounded, Sender};
 use embedder_traits::{EmbedderMsg, EmbedderProxy, EmbedderReceiver, EventLoopWaker};
@@ -95,12 +95,12 @@ use ipc_channel::ipc::{self, IpcSender};
 use log::{Log, Metadata, Record};
 use msg::constellation_msg::{PipelineNamespace, PipelineNamespaceId};
 use net::resource_thread::new_resource_threads;
-use net_traits::IpcSend;
+use net_traits::{IpcSend, ResourceThreads};
 use profile::mem as profile_mem;
 use profile::time as profile_time;
 use profile_traits::mem;
 use profile_traits::time;
-use script_traits::{ConstellationMsg, SWManagerSenders, ScriptToConstellationChan};
+use script_traits::{ConstellationMsg, SWManagerSenders, ScriptToConstellationChan, WindowSizeData};
 use servo_config::opts;
 use servo_config::{pref, prefs};
 use std::borrow::Cow;
@@ -133,6 +133,11 @@ pub struct Servo<Window: WindowMethods + 'static> {
     embedder_receiver: EmbedderReceiver,
     embedder_events: Vec<(Option<BrowserId>, EmbedderMsg)>,
     profiler_enabled: bool,
+    time_profiler_chan: time::ProfilerChan,
+    mem_profiler_chan: mem::ProfilerChan,
+    public_resource_threads: ResourceThreads,
+    webvr_compositor: Option<Box<WebVRCompositorHandler>>,
+    webvr_heartbeats: Vec<Box<dyn webvr_traits::WebVRMainThreadHeartbeat>>,
 }
 
 #[derive(Clone)]
@@ -178,34 +183,137 @@ impl<Window> Servo<Window>
 where
     Window: WindowMethods + 'static,
 {
-    pub fn new(window: Rc<Window>) -> Servo<Window> {
+    // FIXME: we should have a embedder object, not window
+    pub fn new(embedder: Rc<Window>) -> Servo<Window> {
+        
+        // Non Compositor Stuff
+
         // Global configuration options, parsed from the command line.
+        let opts = opts::get();
+
+        // Reserving a namespace to create TopLevelBrowserContextId.
+        PipelineNamespace::install(PipelineNamespaceId(0));
+
+        let (embedder_proxy, embedder_receiver) = create_embedder_channel(embedder.create_event_loop_waker());
+
+        let time_profiler_chan = profile_time::Profiler::create(&opts.time_profiling, opts.time_profiler_trace_path.clone());
+        let mem_profiler_chan = profile_mem::Profiler::create(opts.mem_profiler_period);
+        let debugger_chan = opts.debugger_port.map(|port| debugger::start_server(port));
+        let devtools_chan = opts.devtools_port.map(|port| devtools::start_server(port));
+
+        // Important that this call is done in a single-threaded fashion, we
+        // can't defer it after `create_constellation` has started.
+        script::init();
+
+        let (public_resource_threads, private_resource_threads) = new_resource_threads(
+            opts.user_agent.clone(),
+            devtools_chan.clone(),
+            time_profiler_chan.clone(),
+            mem_profiler_chan.clone(),
+            embedder_proxy.clone(),
+            opts.config_dir.clone(),
+        );
+
+        let bluetooth_thread: IpcSender<BluetoothRequest> =
+            BluetoothThreadFactory::new(embedder_proxy.clone());
+
+        let resource_sender = public_resource_threads.sender();
+
+        let mut webvr_heartbeats: Vec<Box<dyn webvr_traits::WebVRMainThreadHeartbeat>> = Vec::new();
+        let webvr_services = if pref!(dom.webvr.enabled) {
+            let mut services = VRServiceManager::new();
+            services.register_defaults();
+            embedder.register_vr_services(&mut services, &mut webvr_heartbeats);
+            Some(services)
+        } else {
+            None
+        };
+
+        let (webvr_chan, webvr_constellation_sender, webvr_compositor) =
+            if let Some(services) = webvr_services {
+                // WebVR initialization
+                let (mut handler, sender) = WebVRCompositorHandler::new();
+                let (webvr_thread, constellation_sender) = WebVRThread::spawn(sender, services);
+                handler.set_webvr_thread_sender(webvr_thread.clone());
+                (
+                    Some(webvr_thread),
+                    Some(constellation_sender),
+                    Some(handler),
+                )
+            } else {
+                (None, None, None)
+            };
+
+        let initial_state = InitialConstellationState {
+            embedder_proxy,
+            debugger_chan,
+            devtools_chan,
+            bluetooth_thread,
+            public_resource_threads: public_resource_threads.clone(),
+            private_resource_threads,
+            time_profiler_chan: time_profiler_chan.clone(),
+            mem_profiler_chan: mem_profiler_chan.clone(),
+            webvr_chan,
+        };
+
+        let (constellation_chan, from_swmanager_sender) = Constellation::<
+            script_layout_interface::message::Msg,
+            layout_thread::LayoutThread,
+            script::script_thread::ScriptThread,
+        >::start(initial_state);
+
+        if let Some(webvr_constellation_sender) = webvr_constellation_sender {
+            // Set constellation channel used by WebVR thread to broadcast events
+            webvr_constellation_sender
+                .send(constellation_chan.clone())
+                .unwrap();
+        }
+
+        // channels to communicate with Service Worker Manager
+        let sw_senders = SWManagerSenders {
+            swmanager_sender: from_swmanager_sender,
+            resource_sender: resource_sender,
+        };
+
+        // Send the constellation's swmanager sender to service worker manager thread
+        script::init_service_workers(sw_senders);
+
+        if cfg!(feature = "webdriver") {
+            if let Some(port) = opts.webdriver_port {
+                webdriver(port, constellation_chan.clone());
+            }
+        }
+
+        Servo {
+            compositor: None,
+            constellation_chan: constellation_chan,
+            embedder_receiver: embedder_receiver,
+            embedder_events: Vec::new(),
+            profiler_enabled: false,
+            time_profiler_chan,
+            mem_profiler_chan,
+            webvr_heartbeats,
+            public_resource_threads,
+            webvr_compositor,
+        }
+    }
+
+    pub fn create_compositor(&mut self, window: Rc<Window>) {
+        if self.compositor.is_some() {
+            error!("Supporting only one compositor at a time");
+        }
+
         let opts = opts::get();
 
         // Make sure the gl context is made current.
         window.prepare_for_composite();
 
-        // Reserving a namespace to create TopLevelBrowserContextId.
-        PipelineNamespace::install(PipelineNamespaceId(0));
-
         // Get both endpoints of a special channel for communication between
         // the client window and the compositor. This channel is unique because
         // messages to client may need to pump a platform-specific event loop
         // to deliver the message.
-        let (compositor_proxy, compositor_receiver) =
-            create_compositor_channel(window.create_event_loop_waker());
-        let (embedder_proxy, embedder_receiver) =
-            create_embedder_channel(window.create_event_loop_waker());
-        let time_profiler_chan = profile_time::Profiler::create(
-            &opts.time_profiling,
-            opts.time_profiler_trace_path.clone(),
-        );
-        let mem_profiler_chan = profile_mem::Profiler::create(opts.mem_profiler_period);
-        let debugger_chan = opts.debugger_port.map(|port| debugger::start_server(port));
-        let devtools_chan = opts.devtools_port.map(|port| devtools::start_server(port));
-
+        let (compositor_proxy, compositor_receiver) = create_compositor_channel(window.create_event_loop_waker());
         let coordinates = window.get_coordinates();
-
         let (mut webrender, webrender_api_sender) = {
             let renderer_kind = if opts::get().should_use_osmesa() {
                 RendererKind::OSMesa
@@ -250,77 +358,81 @@ where
             .expect("Unable to initialize webrender!")
         };
 
+        // Move to compositor
+        let font_cache_thread = FontCacheThread::new(
+            self.public_resource_threads.sender(),
+            webrender_api_sender.create_api(),
+        );
+
         let webrender_api = webrender_api_sender.create_api();
         let wr_document_layer = 0; //TODO
         let webrender_document =
             webrender_api.add_document(coordinates.framebuffer, wr_document_layer);
 
-        // Important that this call is done in a single-threaded fashion, we
-        // can't defer it after `create_constellation` has started.
-        script::init();
-
-        let mut webvr_heartbeats = Vec::new();
-        let webvr_services = if pref!(dom.webvr.enabled) {
-            let mut services = VRServiceManager::new();
-            services.register_defaults();
-            window.register_vr_services(&mut services, &mut webvr_heartbeats);
-            Some(services)
+        // GLContext factory used to create WebGL Contexts
+        let gl_factory = if opts::get().should_use_osmesa() {
+            GLContextFactory::current_osmesa_handle()
         } else {
-            None
+            GLContextFactory::current_native_handle(&compositor_proxy)
         };
 
-        // Create the constellation, which maintains the engine
-        // pipelines, including the script and layout threads, as well
-        // as the navigation context.
-        let (constellation_chan, sw_senders) = create_constellation(
-            opts.user_agent.clone(),
-            opts.config_dir.clone(),
-            embedder_proxy.clone(),
-            compositor_proxy.clone(),
-            time_profiler_chan.clone(),
-            mem_profiler_chan.clone(),
-            debugger_chan,
-            devtools_chan,
-            &mut webrender,
-            webrender_document,
-            webrender_api_sender,
-            window.gl(),
-            webvr_services,
-        );
+        // Initialize WebGL Thread entry point.
+        let webgl_threads = gl_factory.map(|factory| {
+            let (webgl_threads, image_handler, output_handler) = WebGLThreads::new(
+                factory,
+                window.gl(),
+                webrender_api_sender.clone(),
+                // self.webvr_compositor.map(|c| c as Box<_>),
+                None, // FIXME ^
+            );
 
-        // Send the constellation's swmanager sender to service worker manager thread
-        script::init_service_workers(sw_senders);
+            // Set webrender external image handler for WebGL textures
+            webrender.set_external_image_handler(image_handler);
 
-        if cfg!(feature = "webdriver") {
-            if let Some(port) = opts.webdriver_port {
-                webdriver(port, constellation_chan.clone());
+            // Set DOM to texture handler, if enabled.
+            if let Some(output_handler) = output_handler {
+                webrender.set_output_image_handler(output_handler);
             }
-        }
+
+            webgl_threads
+        });
+
+        let window_size = WindowSizeData {
+            initial_viewport: opts::get().initial_window_size.to_f32() * euclid::TypedScale::new(1.0),
+            device_pixel_ratio: euclid::TypedScale::new(opts::get().device_pixels_per_px.unwrap_or(1.0)),
+        };
 
         // The compositor coordinates with the client window to create the final
         // rendered page and display it somewhere.
         let compositor = IOCompositor::create(
             window,
             InitialCompositorState {
-                sender: compositor_proxy,
+                sender: compositor_proxy.clone(),
                 receiver: compositor_receiver,
-                constellation_chan: constellation_chan.clone(),
-                time_profiler_chan: time_profiler_chan,
-                mem_profiler_chan: mem_profiler_chan,
+                constellation_chan: self.constellation_chan.clone(),
+                time_profiler_chan: self.time_profiler_chan.clone(),
+                mem_profiler_chan: self.mem_profiler_chan.clone(),
                 webrender,
                 webrender_document,
                 webrender_api,
-                webvr_heartbeats,
+                // webvr_heartbeats: self.webvr_heartbeats.clone(),
+                webvr_heartbeats: Vec::new(), // FIXME ^
             },
         );
 
-        Servo {
-            compositor: Some(compositor),
-            constellation_chan: constellation_chan,
-            embedder_receiver: embedder_receiver,
-            embedder_events: Vec::new(),
-            profiler_enabled: false,
-        }
+        let info = CompositorInfo {
+            compositor_proxy,
+            webrender_document,
+            webrender_api_sender,
+            window_size,
+            font_cache_thread,
+            webgl_threads,
+        };
+
+        // FIXME
+        // constellation.on_compositor_ready(info);
+
+        self.compositor = Some(compositor);
     }
 
     fn handle_window_event(&mut self, event: WindowEvent) {
@@ -603,119 +715,6 @@ fn create_compositor_channel(
         },
         CompositorReceiver { receiver: receiver },
     )
-}
-
-fn create_constellation(
-    user_agent: Cow<'static, str>,
-    config_dir: Option<PathBuf>,
-    embedder_proxy: EmbedderProxy,
-    compositor_proxy: CompositorProxy,
-    time_profiler_chan: time::ProfilerChan,
-    mem_profiler_chan: mem::ProfilerChan,
-    debugger_chan: Option<debugger::Sender>,
-    devtools_chan: Option<Sender<devtools_traits::DevtoolsControlMsg>>,
-    webrender: &mut webrender::Renderer,
-    webrender_document: webrender_api::DocumentId,
-    webrender_api_sender: webrender_api::RenderApiSender,
-    window_gl: Rc<dyn gl::Gl>,
-    webvr_services: Option<VRServiceManager>,
-) -> (Sender<ConstellationMsg>, SWManagerSenders) {
-    let bluetooth_thread: IpcSender<BluetoothRequest> =
-        BluetoothThreadFactory::new(embedder_proxy.clone());
-
-    let (public_resource_threads, private_resource_threads) = new_resource_threads(
-        user_agent,
-        devtools_chan.clone(),
-        time_profiler_chan.clone(),
-        mem_profiler_chan.clone(),
-        embedder_proxy.clone(),
-        config_dir,
-    );
-    let font_cache_thread = FontCacheThread::new(
-        public_resource_threads.sender(),
-        webrender_api_sender.create_api(),
-    );
-
-    let resource_sender = public_resource_threads.sender();
-
-    let (webvr_chan, webvr_constellation_sender, webvr_compositor) =
-        if let Some(services) = webvr_services {
-            // WebVR initialization
-            let (mut handler, sender) = WebVRCompositorHandler::new();
-            let (webvr_thread, constellation_sender) = WebVRThread::spawn(sender, services);
-            handler.set_webvr_thread_sender(webvr_thread.clone());
-            (
-                Some(webvr_thread),
-                Some(constellation_sender),
-                Some(handler),
-            )
-        } else {
-            (None, None, None)
-        };
-
-    // GLContext factory used to create WebGL Contexts
-    let gl_factory = if opts::get().should_use_osmesa() {
-        GLContextFactory::current_osmesa_handle()
-    } else {
-        GLContextFactory::current_native_handle(&compositor_proxy)
-    };
-
-    // Initialize WebGL Thread entry point.
-    let webgl_threads = gl_factory.map(|factory| {
-        let (webgl_threads, image_handler, output_handler) = WebGLThreads::new(
-            factory,
-            window_gl,
-            webrender_api_sender.clone(),
-            webvr_compositor.map(|c| c as Box<_>),
-        );
-
-        // Set webrender external image handler for WebGL textures
-        webrender.set_external_image_handler(image_handler);
-
-        // Set DOM to texture handler, if enabled.
-        if let Some(output_handler) = output_handler {
-            webrender.set_output_image_handler(output_handler);
-        }
-
-        webgl_threads
-    });
-
-    let initial_state = InitialConstellationState {
-        compositor_proxy,
-        embedder_proxy,
-        debugger_chan,
-        devtools_chan,
-        bluetooth_thread,
-        font_cache_thread,
-        public_resource_threads,
-        private_resource_threads,
-        time_profiler_chan,
-        mem_profiler_chan,
-        webrender_document,
-        webrender_api_sender,
-        webgl_threads,
-        webvr_chan,
-    };
-    let (constellation_chan, from_swmanager_sender) = Constellation::<
-        script_layout_interface::message::Msg,
-        layout_thread::LayoutThread,
-        script::script_thread::ScriptThread,
-    >::start(initial_state);
-
-    if let Some(webvr_constellation_sender) = webvr_constellation_sender {
-        // Set constellation channel used by WebVR thread to broadcast events
-        webvr_constellation_sender
-            .send(constellation_chan.clone())
-            .unwrap();
-    }
-
-    // channels to communicate with Service Worker Manager
-    let sw_senders = SWManagerSenders {
-        swmanager_sender: from_swmanager_sender,
-        resource_sender: resource_sender,
-    };
-
-    (constellation_chan, sw_senders)
 }
 
 // A logger that logs to two downstream loggers.
