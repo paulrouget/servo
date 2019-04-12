@@ -6,7 +6,7 @@
 
 use euclid::{TypedPoint2D, TypedVector2D, TypedScale, TypedSize2D};
 use gleam::gl;
-use glutin::{Api, ContextBuilder, GlContext, GlRequest, GlWindow};
+use glutin::{Api, ContextBuilder, PossiblyCurrent, WindowedContext, GlRequest};
 #[cfg(any(target_os = "linux", target_os = "windows"))]
 use image;
 use keyboard_types::{Key, KeyboardEvent, KeyState};
@@ -136,7 +136,7 @@ impl HeadlessContext {
 }
 
 enum WindowKind {
-    Window(GlWindow, RefCell<glutin::EventsLoop>),
+    Window(WindowedContext<PossiblyCurrent>, RefCell<glutin::EventsLoop>),
     Headless(HeadlessContext),
 }
 
@@ -210,20 +210,14 @@ impl Window {
                 context_builder = context_builder.with_multisampling(MULTISAMPLES)
             }
 
-            let glutin_window = GlWindow::new(window_builder, context_builder, &events_loop)
-                .expect("Failed to create window.");
+            let context = context_builder.build_windowed(window_builder, &events_loop).expect("Faild to create window.");
+
+            let context = unsafe { context.make_current().expect("Failed to make context current.") };
 
             #[cfg(any(target_os = "linux", target_os = "windows"))]
             {
                 let icon_bytes = include_bytes!("../../../resources/servo64.png");
-                glutin_window.set_window_icon(Some(load_icon(icon_bytes)));
-            }
-
-            unsafe {
-                glutin_window
-                    .context()
-                    .make_current()
-                    .expect("Couldn't make window current");
+                context.window().set_window_icon(Some(load_icon(icon_bytes)));
             }
 
             let PhysicalSize {
@@ -232,23 +226,24 @@ impl Window {
             } = events_loop.get_primary_monitor().get_dimensions();
             screen_size = TypedSize2D::new(screen_width as u32, screen_height as u32);
             // TODO(ajeffrey): can this fail?
-            let LogicalSize { width, height } = glutin_window
+            let LogicalSize { width, height } = context
+                .window()
                 .get_inner_size()
                 .expect("Failed to get window inner size.");
             inner_size = TypedSize2D::new(width as u32, height as u32);
 
-            glutin_window.show();
+            context.window().show();
 
-            WindowKind::Window(glutin_window, RefCell::new(events_loop))
+            WindowKind::Window(context, RefCell::new(events_loop))
         };
 
         let gl = match window_kind {
-            WindowKind::Window(ref window, ..) => match gl::GlType::default() {
+            WindowKind::Window(ref context, ..) => match gl::GlType::default() {
                 gl::GlType::Gl => unsafe {
-                    gl::GlFns::load_with(|s| window.get_proc_address(s) as *const _)
+                    gl::GlFns::load_with(|s| context.get_proc_address(s) as *const _)
                 },
                 gl::GlType::Gles => unsafe {
-                    gl::GlesFns::load_with(|s| window.get_proc_address(s) as *const _)
+                    gl::GlesFns::load_with(|s| context.get_proc_address(s) as *const _)
                 },
             },
             WindowKind::Headless(..) => unsafe {
@@ -295,8 +290,9 @@ impl Window {
     pub fn page_height(&self) -> f32 {
         let dpr = self.servo_hidpi_factor();
         match self.kind {
-            WindowKind::Window(ref window, _) => {
-                let size = window
+            WindowKind::Window(ref context, _) => {
+                let size = context
+                    .window()
                     .get_inner_size()
                     .expect("Failed to get window inner size.");
                 size.height as f32 * dpr.get()
@@ -306,30 +302,31 @@ impl Window {
     }
 
     pub fn set_title(&self, title: &str) {
-        if let WindowKind::Window(ref window, _) = self.kind {
-            window.set_title(title);
+        if let WindowKind::Window(ref context, _) = self.kind {
+            context.window().set_title(title);
         }
     }
 
     pub fn set_inner_size(&self, size: DeviceIntSize) {
-        if let WindowKind::Window(ref window, _) = self.kind {
+        if let WindowKind::Window(ref context, _) = self.kind {
             let size = size.to_f32() / self.device_hidpi_factor();
-            window.set_inner_size(LogicalSize::new(size.width.into(), size.height.into()))
+            context.window().set_inner_size(LogicalSize::new(size.width.into(), size.height.into()))
         }
     }
 
     pub fn set_position(&self, point: DeviceIntPoint) {
-        if let WindowKind::Window(ref window, _) = self.kind {
+        if let WindowKind::Window(ref context, _) = self.kind {
             let point = point.to_f32() / self.device_hidpi_factor();
-            window.set_position(LogicalPosition::new(point.x.into(), point.y.into()))
+            context.window().set_position(LogicalPosition::new(point.x.into(), point.y.into()))
         }
     }
 
     pub fn set_fullscreen(&self, state: bool) {
         match self.kind {
-            WindowKind::Window(ref window, ..) => {
+            WindowKind::Window(ref context, ref events_loop) => {
                 if self.fullscreen.get() != state {
-                    window.set_fullscreen(Some(window.get_primary_monitor()));
+                    let monitor = events_loop.borrow().get_primary_monitor();
+                    context.window().set_fullscreen(Some(monitor));
                 }
             },
             WindowKind::Headless(..) => {},
@@ -450,9 +447,9 @@ impl Window {
     }
 
     fn winit_event_to_servo_event(&self, event: glutin::Event) {
-        if let WindowKind::Window(ref window, _) = self.kind {
+        if let WindowKind::Window(ref context, _) = self.kind {
             if let Event::WindowEvent { window_id, .. } = event {
-                if window.id() != window_id {
+                if context.window().id() != window_id {
                      return;
                 }
             }
@@ -546,11 +543,8 @@ impl Window {
                 event: glutin::WindowEvent::Resized(size),
                 ..
             } => {
-                // size is DeviceIndependentPixel.
-                // window.resize() takes DevicePixel.
-                if let WindowKind::Window(ref window, _) = self.kind {
-                    let size = size.to_physical(self.device_hidpi_factor().get() as f64);
-                    window.resize(size);
+                if let WindowKind::Window(ref context, _) = self.kind {
+                    context.window().set_inner_size(size);
                 }
                 // window.set_inner_size() takes DeviceIndependentPixel.
                 let (width, height) = size.into();
@@ -618,7 +612,7 @@ impl Window {
 
     fn device_hidpi_factor(&self) -> TypedScale<f32, DeviceIndependentPixel, DevicePixel> {
         match self.kind {
-            WindowKind::Window(ref window, ..) => TypedScale::new(window.get_hidpi_factor() as f32),
+            WindowKind::Window(ref context, ..) => TypedScale::new(context.window().get_hidpi_factor() as f32),
             WindowKind::Headless(..) => TypedScale::new(1.0),
         }
     }
@@ -635,7 +629,7 @@ impl Window {
 
     pub fn set_cursor(&self, cursor: Cursor) {
         match self.kind {
-            WindowKind::Window(ref window, ..) => {
+            WindowKind::Window(ref context, ..) => {
                 use glutin::MouseCursor;
 
                 let winit_cursor = match cursor {
@@ -675,7 +669,7 @@ impl Window {
                     Cursor::ZoomOut => MouseCursor::ZoomOut,
                     _ => MouseCursor::Default,
                 };
-                window.set_cursor(winit_cursor);
+                context.window().set_cursor(winit_cursor);
             },
             WindowKind::Headless(..) => {},
         }
@@ -689,9 +683,10 @@ impl WindowMethods for Window {
 
     fn get_coordinates(&self) -> EmbedderCoordinates {
         match self.kind {
-            WindowKind::Window(ref window, _) => {
+            WindowKind::Window(ref context, _) => {
                 // TODO(ajeffrey): can this fail?
                 let dpr = self.device_hidpi_factor();
+                let window = context.window();
                 let LogicalSize { width, height } = window
                     .get_outer_size()
                     .expect("Failed to get window outer size.");
@@ -739,8 +734,8 @@ impl WindowMethods for Window {
 
     fn present(&self) {
         match self.kind {
-            WindowKind::Window(ref window, ..) => {
-                if let Err(err) = window.swap_buffers() {
+            WindowKind::Window(ref context, ..) => {
+                if let Err(err) = context.swap_buffers() {
                     warn!("Failed to swap window buffers ({}).", err);
                 }
             },
@@ -787,10 +782,22 @@ impl WindowMethods for Window {
     }
 
     fn prepare_for_composite(&self) -> bool {
-        if let WindowKind::Window(ref window, ..) = self.kind {
-            if let Err(err) = unsafe { window.context().make_current() } {
-                warn!("Couldn't make window current: {}", err);
-            }
+        if let WindowKind::Window(ref context, ..) = self.kind {
+            // FIXME:
+            // The problem is, with the new Glutin API, we can only hold:
+            // - WindowedContext<NotCurrent>, which will have to change to a PossiblyCurrent after
+            // make_current
+            // - WindowedContext<PossiblyCurrent>, where we assume always current, will fail with
+            // new windows, for example with glwindow WebVR test
+            // - WindowedContext<ContextCurrentState>, which doesn't have a size known at
+            // compile-time
+            // Not sure yet how to handle that
+
+            // Old code:
+            // let context = unsafe { context.make_current().expect("Failed to make context current.") };
+            // if let Err(err) = unsafe { context.make_current() } {
+            //     warn!("Couldn't make window current: {}", err);
+            // }
         };
         true
     }
@@ -817,10 +824,10 @@ impl WindowMethods for Window {
                 let context_builder = ContextBuilder::new()
                     .with_gl(Window::gl_version())
                     .with_vsync(false); // Assume the browser vsync is the same as the test VR window vsync
-                let gl_window = GlWindow::new(window_builder, context_builder, &*events_loop.borrow())
-                    .expect("Failed to create window.");
+                let context = context_builder.build_windowed(window_builder, &*events_loop.borrow()).expect("Faild to create window.");
+                let context = unsafe { context.make_not_current().expect("Failed to make context not current.") };
                 let gl = self.gl.clone();
-                let (service, heartbeat) = GlWindowVRService::new(name, gl_window, gl);
+                let (service, heartbeat) = GlWindowVRService::new(name, context, gl);
 
                 services.register(Box::new(service));
                 heartbeats.push(Box::new(heartbeat));
