@@ -29,7 +29,7 @@ mod session_history;
 mod timer_scheduler;
 
 pub use crate::constellation::{
-    Constellation, CompositorInfo, FromCompositorLogger, FromScriptLogger, InitialConstellationState,
+    Constellation, FromCompositorLogger, FromScriptLogger, InitialCompositorInfo, InitialConstellationState,
 };
 pub use crate::pipeline::UnprivilegedPipelineContent;
 #[cfg(all(

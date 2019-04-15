@@ -77,7 +77,7 @@ use compositing::{CompositingReason, IOCompositor, ShutdownState};
     not(target_arch = "aarch64")
 ))]
 use constellation::content_process_sandbox_profile;
-use constellation::{Constellation, CompositorInfo, InitialConstellationState, UnprivilegedPipelineContent};
+use constellation::{Constellation, InitialConstellationState, InitialCompositorInfo, UnprivilegedPipelineContent};
 use constellation::{FromCompositorLogger, FromScriptLogger};
 use crossbeam_channel::{unbounded, Sender};
 use embedder_traits::{EmbedderMsg, EmbedderProxy, EmbedderReceiver, EventLoopWaker};
@@ -90,7 +90,6 @@ use env_logger::Builder as EnvLoggerBuilder;
     not(target_arch = "aarch64")
 ))]
 use gaol::sandbox::{ChildSandbox, ChildSandboxMethods};
-use gfx::font_cache_thread::FontCacheThread;
 use ipc_channel::ipc::{self, IpcSender};
 use log::{Log, Metadata, Record};
 use msg::constellation_msg::{PipelineNamespace, PipelineNamespaceId};
@@ -138,6 +137,7 @@ pub struct Servo<Window: WindowMethods + 'static> {
     public_resource_threads: ResourceThreads,
     webvr_compositor: Option<Box<WebVRCompositorHandler>>,
     webvr_heartbeats: Vec<Box<dyn webvr_traits::WebVRMainThreadHeartbeat>>,
+    new_compositor_sender: Sender<InitialCompositorInfo>,
 }
 
 #[derive(Clone)]
@@ -244,7 +244,11 @@ where
                 (None, None, None)
             };
 
+
+        let (new_compositor_sender, new_compositor_receiver) = unbounded();
+
         let initial_state = InitialConstellationState {
+            new_compositor_receiver,
             embedder_proxy,
             debugger_chan,
             devtools_chan,
@@ -295,6 +299,7 @@ where
             webvr_heartbeats,
             public_resource_threads,
             webvr_compositor,
+            new_compositor_sender,
         }
     }
 
@@ -358,12 +363,6 @@ where
             .expect("Unable to initialize webrender!")
         };
 
-        // Move to compositor
-        let font_cache_thread = FontCacheThread::new(
-            self.public_resource_threads.sender(),
-            webrender_api_sender.create_api(),
-        );
-
         let webrender_api = webrender_api_sender.create_api();
         let wr_document_layer = 0; //TODO
         let webrender_document =
@@ -420,17 +419,17 @@ where
             },
         );
 
-        let info = CompositorInfo {
+        let info = InitialCompositorInfo {
             compositor_proxy,
             webrender_document,
             webrender_api_sender,
             window_size,
-            font_cache_thread,
             webgl_threads,
         };
 
-        // FIXME
-        // constellation.on_compositor_ready(info);
+        if let Err(e) = self.new_compositor_sender.send(info) {
+            warn!("error ({:?}).", e); // FIXME. Add message
+        }
 
         self.compositor = Some(compositor);
     }

@@ -169,6 +169,32 @@ use webvr_traits::{WebVREvent, WebVRMsg};
 
 type PendingApprovalNavigations = HashMap<PipelineId, (LoadData, bool)>;
 
+/// FIXME
+pub struct InitialCompositorInfo { // FIXME: rename. Confusing with InitialCompositorState
+    /// A single WebRender document the constellation operates on.
+    pub webrender_document: webrender_api::DocumentId,
+
+    /// A channel for the constellation to send messages to the
+    /// WebRender thread.
+    pub webrender_api_sender: webrender_api::RenderApiSender,
+
+    /// The size of the top-level window.
+    pub window_size: WindowSizeData,
+
+    /// A channel (the implementation of which is port-specific) for the
+    /// constellation to send messages to the compositor thread.
+    pub compositor_proxy: CompositorProxy,
+
+    /// Entry point to create and get channels to a WebGLThread.
+    pub webgl_threads: Option<WebGLThreads>,
+}
+
+impl std::fmt::Debug for InitialCompositorInfo {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(formatter, "FIXME")
+    }
+}
+
 /// Servo supports tabs (referred to as browsers), so `Constellation` needs to
 /// store browser specific data for bookkeeping.
 struct Browser {
@@ -195,6 +221,9 @@ struct Browser {
 /// the `script` crate). Script and layout communicate using a `Message`
 /// type.
 pub struct Constellation<Message, LTF, STF> {
+    /// FIXME
+    new_compositor_receiver: Receiver<InitialCompositorInfo>,
+
     /// An IPC channel for script threads to send messages to the constellation.
     /// This is the script threads' view of `script_receiver`.
     script_sender: IpcSender<(PipelineId, FromScriptMsg)>,
@@ -357,11 +386,7 @@ pub struct Constellation<Message, LTF, STF> {
     compositor_info: Option<CompositorInfo>,
 }
 
-pub struct CompositorInfo {
-    /// A channel (the implementation of which is port-specific) for the
-    /// constellation to send messages to the compositor thread.
-    pub compositor_proxy: CompositorProxy,
-
+struct CompositorInfo {
     /// A single WebRender document the constellation operates on.
     pub webrender_document: webrender_api::DocumentId,
 
@@ -371,6 +396,10 @@ pub struct CompositorInfo {
 
     /// The size of the top-level window.
     pub window_size: WindowSizeData,
+
+    /// A channel (the implementation of which is port-specific) for the
+    /// constellation to send messages to the compositor thread.
+    pub compositor_proxy: CompositorProxy,
 
     /// A channel for the constellation to send messages to the font
     /// cache thread.
@@ -382,6 +411,9 @@ pub struct CompositorInfo {
 
 /// State needed to construct a constellation.
 pub struct InitialConstellationState {
+    /// FIXME
+    pub new_compositor_receiver: Receiver<InitialCompositorInfo>,
+
     /// A channel through which messages can be sent to the embedder.
     pub embedder_proxy: EmbedderProxy,
 
@@ -635,6 +667,7 @@ where
                 PipelineNamespace::install(PipelineNamespaceId(1));
 
                 let mut constellation: Constellation<Message, LTF, STF> = Constellation {
+                    new_compositor_receiver: state.new_compositor_receiver,
                     script_sender: ipc_script_sender,
                     background_hang_monitor_sender,
                     background_hang_monitor_receiver,
@@ -701,10 +734,6 @@ where
             .expect("Thread spawning failed");
 
         (compositor_sender, swmanager_sender)
-    }
-
-    fn on_compositor_ready(&mut self, state: CompositorInfo) {
-        self.compositor_info = Some(state);
     }
 
     fn compositor_proxy(&self) -> &CompositorProxy {
@@ -945,6 +974,7 @@ where
             Layout(FromLayoutMsg),
             NetworkListener((PipelineId, FetchResponseMsg)),
             FromSWManager(SWManagerMsg),
+            NewCompositor(InitialCompositorInfo),
         }
 
         // Get one incoming request.
@@ -967,6 +997,9 @@ where
             }
             recv(self.compositor_receiver) -> msg => {
                 Ok(Request::Compositor(msg.expect("Unexpected compositor channel panic in constellation")))
+            }
+            recv(self.new_compositor_receiver) -> msg => {
+                Ok(Request::NewCompositor(msg.expect("fixme")))
             }
             recv(self.layout_receiver) -> msg => {
                 msg.expect("Unexpected layout channel panic in constellation").map(Request::Layout)
@@ -1002,6 +1035,9 @@ where
             },
             Request::FromSWManager(message) => {
                 self.handle_request_from_swmanager(message);
+            },
+            Request::NewCompositor(message) => {
+                self.handle_new_compositor(message);
             },
         }
     }
@@ -1218,6 +1254,21 @@ where
                 self.handle_exit_fullscreen_msg(top_level_browsing_context_id);
             },
         }
+    }
+
+    fn handle_new_compositor(&mut self, state: InitialCompositorInfo) {
+        let font_cache_thread = FontCacheThread::new(
+            self.public_resource_threads.sender(),
+            state.webrender_api_sender.create_api(),
+        );
+        self.compositor_info = Some(CompositorInfo {
+            font_cache_thread,
+            webrender_document: state.webrender_document,
+            webrender_api_sender: state.webrender_api_sender,
+            window_size: state.window_size,
+            webgl_threads: None, // state.webgl_threads, FIXME
+            compositor_proxy: state.compositor_proxy,
+        });
     }
 
     fn handle_request_from_script(&mut self, message: (PipelineId, FromScriptMsg)) {
