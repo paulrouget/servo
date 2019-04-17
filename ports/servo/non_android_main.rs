@@ -122,55 +122,64 @@ pub fn main() {
         process::exit(0);
     }
 
-    let window = glutin_app::create_window();
-
-    let mut browser = browser::Browser::new(window.clone());
-
     // If the url is not provided, we fallback to the homepage in prefs,
     // or a blank page in case the homepage is not set either.
-    let cwd = env::current_dir().unwrap();
-    let cmdline_url = opts::get().url.clone();
-    let pref_url = {
-        let homepage_url = pref!(shell.homepage);
-        parse_url_or_filename(&cwd, &homepage_url).ok()
+    let url = {
+        let cwd = env::current_dir().unwrap();
+        let cmdline_url = opts::get().url.clone();
+        let pref_url = {
+            let homepage_url = pref!(shell.homepage);
+            parse_url_or_filename(&cwd, &homepage_url).ok()
+        };
+        let blank_url = ServoUrl::parse("about:blank").ok();
+        cmdline_url.or(pref_url).or(blank_url).unwrap()
     };
-    let blank_url = ServoUrl::parse("about:blank").ok();
+    let foreground = opts::get().output_file.is_none() && !opts::get().headless;
 
-    let target_url = cmdline_url.or(pref_url).or(blank_url).unwrap();
+    let app = glutin_app::App::new();
+    let waker = app.create_event_loop_waker();
 
-    let mut servo = Servo::new(window.clone());
-    let browser_id = BrowserId::new();
-    servo.handle_events(vec![WindowEvent::NewBrowser(target_url, browser_id)]);
-
+    let servo = Servo::new(waker);
     servo.setup_logging();
 
-    window.run(|| {
-        let win_events = window.get_events();
+    let mut browser = None;
 
-        // FIXME: this could be handled by Servo. We don't need
-        // a repaint_synchronously function exposed.
-        let need_resize = win_events.iter().any(|e| match *e {
-            WindowEvent::Resize => true,
-            _ => false,
-        });
+    app.run(|| {
+        if let Some(browser) = browser {
+            let win_events = app.get_events();
 
-        browser.handle_window_events(win_events);
+            // FIXME: this could be handled by Servo. We don't need
+            // a repaint_synchronously function exposed.
+            let need_resize = win_events.iter().any(|e| match *e {
+                WindowEvent::Resize => true,
+                _ => false,
+            });
 
-        let mut servo_events = servo.get_events();
-        loop {
-            browser.handle_servo_events(servo_events);
-            servo.handle_events(browser.get_events());
-            if browser.shutdown_requested() {
-                return true;
+            browser.handle_window_events(win_events);
+
+            let mut servo_events = servo.get_events();
+            loop {
+                browser.handle_servo_events(servo_events);
+                servo.handle_events(browser.get_events());
+                if browser.shutdown_requested() {
+                    return true;
+                }
+                servo_events = servo.get_events();
+                if servo_events.is_empty() {
+                    break;
+                }
             }
-            servo_events = servo.get_events();
-            if servo_events.is_empty() {
-                break;
-            }
-        }
 
-        if need_resize {
-            servo.repaint_synchronously();
+            if need_resize {
+                servo.repaint_synchronously();
+            }
+        } else {
+            let window = app.create_window(foreground, opts::get().initial_window_size);
+            servo.create_compositor(window.clone());
+            let mut b = browser::Browser::new(window.clone());
+            let browser_id = BrowserId::new();
+            servo.handle_events(vec![WindowEvent::NewBrowser(url, browser_id)]);
+            browser = Some(b);
         }
         false
     });

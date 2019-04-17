@@ -183,8 +183,7 @@ impl<Window> Servo<Window>
 where
     Window: WindowMethods + 'static,
 {
-    // FIXME: we should have a embedder object, not window
-    pub fn new(embedder: Rc<Window>) -> Servo<Window> {
+    pub fn new(waker: Box<dyn EventLoopWaker>) -> Servo<Window> {
         
         // Non Compositor Stuff
 
@@ -194,7 +193,7 @@ where
         // Reserving a namespace to create TopLevelBrowserContextId.
         PipelineNamespace::install(PipelineNamespaceId(0));
 
-        let (embedder_proxy, embedder_receiver) = create_embedder_channel(embedder.create_event_loop_waker());
+        let (embedder_proxy, embedder_receiver) = create_embedder_channel(waker.create_event_loop_waker());
 
         let time_profiler_chan = profile_time::Profiler::create(&opts.time_profiling, opts.time_profiler_trace_path.clone());
         let mem_profiler_chan = profile_mem::Profiler::create(opts.mem_profiler_period);

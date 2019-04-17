@@ -136,7 +136,7 @@ impl HeadlessContext {
 }
 
 enum WindowKind {
-    Window(GlWindow, RefCell<glutin::EventsLoop>),
+    Window(GlWindow),
     Headless(HeadlessContext),
 }
 
@@ -170,8 +170,10 @@ fn window_creation_scale_factor() -> TypedScale<f32, DeviceIndependentPixel, Dev
 
 impl Window {
     pub fn new(
+        headless: bool,
         is_foreground: bool,
         window_size: TypedSize2D<u32, DeviceIndependentPixel>,
+        events_loop: Option<&EventsLoop>,
     ) -> Rc<Window> {
         let win_size: DeviceIntSize =
             (window_size.to_f32() * window_creation_scale_factor()).to_i32();
@@ -186,12 +188,11 @@ impl Window {
 
         let screen_size;
         let inner_size;
-        let window_kind = if opts::get().headless {
+        let window_kind = if headless {
             screen_size = TypedSize2D::new(width as u32, height as u32);
             inner_size = TypedSize2D::new(width as u32, height as u32);
             WindowKind::Headless(HeadlessContext::new(width as u32, height as u32))
         } else {
-            let events_loop = glutin::EventsLoop::new();
             let mut window_builder = glutin::WindowBuilder::new()
                 .with_title("Servo".to_string())
                 .with_decorations(!opts::get().no_native_titlebar)
@@ -210,7 +211,7 @@ impl Window {
                 context_builder = context_builder.with_multisampling(MULTISAMPLES)
             }
 
-            let glutin_window = GlWindow::new(window_builder, context_builder, &events_loop)
+            let glutin_window = GlWindow::new(window_builder, context_builder, events_loop.as_ref().unwrap())
                 .expect("Failed to create window.");
 
             #[cfg(any(target_os = "linux", target_os = "windows"))]
@@ -229,7 +230,7 @@ impl Window {
             let PhysicalSize {
                 width: screen_width,
                 height: screen_height,
-            } = events_loop.get_primary_monitor().get_dimensions();
+            } = events_loop.as_ref().unwrap().get_primary_monitor().get_dimensions();
             screen_size = TypedSize2D::new(screen_width as u32, screen_height as u32);
             // TODO(ajeffrey): can this fail?
             let LogicalSize { width, height } = glutin_window
@@ -239,7 +240,7 @@ impl Window {
 
             glutin_window.show();
 
-            WindowKind::Window(glutin_window, RefCell::new(events_loop))
+            WindowKind::Window(glutin_window),
         };
 
         let gl = match window_kind {
@@ -343,57 +344,6 @@ impl Window {
 
     fn is_animating(&self) -> bool {
         self.animation_state.get() == AnimationState::Animating && !self.suspended.get()
-    }
-
-    pub fn run<T>(&self, mut servo_callback: T)
-    where
-        T: FnMut() -> bool,
-    {
-        match self.kind {
-            WindowKind::Window(_, ref events_loop) => {
-                let mut stop = false;
-                loop {
-                    if self.is_animating() {
-                        // We block on compositing (servo_callback ends up calling swap_buffers)
-                        events_loop.borrow_mut().poll_events(|e| {
-                            self.winit_event_to_servo_event(e);
-                        });
-                        stop = servo_callback();
-                    } else {
-                        // We block on winit's event loop (window events)
-                        events_loop.borrow_mut().run_forever(|e| {
-                            self.winit_event_to_servo_event(e);
-                            if !self.event_queue.borrow().is_empty() {
-                                if !self.suspended.get() {
-                                    stop = servo_callback();
-                                }
-                            }
-                            if stop || self.is_animating() {
-                                glutin::ControlFlow::Break
-                            } else {
-                                glutin::ControlFlow::Continue
-                            }
-                        });
-                    }
-                    if stop {
-                        break;
-                    }
-                }
-            },
-            WindowKind::Headless(..) => {
-                loop {
-                    // Sleep the main thread to avoid using 100% CPU
-                    // This can be done better, see comments in #18777
-                    if self.event_queue.borrow().is_empty() {
-                        thread::sleep(time::Duration::from_millis(5));
-                    }
-                    let stop = servo_callback();
-                    if stop {
-                        break;
-                    }
-                }
-            },
-        }
     }
 
     #[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
@@ -748,40 +698,6 @@ impl WindowMethods for Window {
         }
     }
 
-    fn create_event_loop_waker(&self) -> Box<dyn EventLoopWaker> {
-        struct GlutinEventLoopWaker {
-            proxy: Option<Arc<glutin::EventsLoopProxy>>,
-        }
-        impl GlutinEventLoopWaker {
-            fn new(window: &Window) -> GlutinEventLoopWaker {
-                let proxy = match window.kind {
-                    WindowKind::Window(_, ref events_loop) => {
-                        Some(Arc::new(events_loop.borrow().create_proxy()))
-                    },
-                    WindowKind::Headless(..) => None,
-                };
-                GlutinEventLoopWaker { proxy }
-            }
-        }
-        impl EventLoopWaker for GlutinEventLoopWaker {
-            fn wake(&self) {
-                // kick the OS event loop awake.
-                if let Some(ref proxy) = self.proxy {
-                    if let Err(err) = proxy.wakeup() {
-                        warn!("Failed to wake up event loop ({}).", err);
-                    }
-                }
-            }
-            fn clone(&self) -> Box<dyn EventLoopWaker + Send> {
-                Box::new(GlutinEventLoopWaker {
-                    proxy: self.proxy.clone(),
-                })
-            }
-        }
-
-        Box::new(GlutinEventLoopWaker::new(&self))
-    }
-
     fn set_animation_state(&self, state: AnimationState) {
         self.animation_state.set(state);
     }
@@ -793,39 +709,6 @@ impl WindowMethods for Window {
             }
         };
         true
-    }
-
-    fn register_vr_services(
-        &self,
-        services: &mut VRServiceManager,
-        heartbeats: &mut Vec<Box<WebVRMainThreadHeartbeat>>
-    ) {
-        if pref!(dom.webvr.test) {
-            warn!("Creating test VR display");
-            // TODO: support dom.webvr.test in headless environments
-            if let WindowKind::Window(_, ref events_loop) = self.kind {
-                // This is safe, because register_vr_services is called from the main thread.
-                let name = String::from("Test VR Display");
-                let size = self.inner_size.get().to_f64();
-                let size = LogicalSize::new(size.width, size.height);
-                let mut window_builder = glutin::WindowBuilder::new()
-                    .with_title(name.clone())
-                    .with_dimensions(size)
-                    .with_visibility(false)
-                    .with_multitouch();
-                window_builder = builder_with_platform_options(window_builder);
-                let context_builder = ContextBuilder::new()
-                    .with_gl(Window::gl_version())
-                    .with_vsync(false); // Assume the browser vsync is the same as the test VR window vsync
-                let gl_window = GlWindow::new(window_builder, context_builder, &*events_loop.borrow())
-                    .expect("Failed to create window.");
-                let gl = self.gl.clone();
-                let (service, heartbeat) = GlWindowVRService::new(name, gl_window, gl);
-
-                services.register(Box::new(service));
-                heartbeats.push(Box::new(heartbeat));
-            }
-        }
     }
 }
 
