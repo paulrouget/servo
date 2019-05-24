@@ -26,3 +26,6 @@ opt-level = 3
 #     <crate> = { path = "/path/to/local/checkout" }
 mio = { git = "https://github.com/servo/mio.git", branch = "servo" }
 iovec = { git = "https://github.com/servo/iovec.git", branch = "servo" }
+offscreen_gl_context = { path = "../rust-offscreen-rendering-context/" }
+servo-skia = { path = "../skia/" }
+winapi = { path = "../winapi-rs/" }
