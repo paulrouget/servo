@@ -91,8 +91,6 @@ fn init(
     wakeup: extern "C" fn(),
     callbacks: CHostCallbacks,
 ) {
-    init_logger();
-
     let args = if !opts.args.is_null() {
         let args = unsafe { CStr::from_ptr(opts.args) };
         args
@@ -104,8 +102,6 @@ fn init(
     } else {
         vec![]
     };
-
-    info!("Args: {:?}", &args);
 
     let url = unsafe { CStr::from_ptr(opts.url) };
     let url = url.to_str().map(|s| s.to_string()).ok();
@@ -138,6 +134,7 @@ pub extern "C" fn init_with_egl(
     wakeup: extern "C" fn(),
     callbacks: CHostCallbacks,
 ) {
+    init_logger();
     let gl = gl_glue::egl::init().unwrap();
     init(opts, gl, wakeup, callbacks)
 }
@@ -149,6 +146,7 @@ pub extern "C" fn init_with_gl(
     wakeup: extern "C" fn(),
     callbacks: CHostCallbacks,
 ) {
+    init_logger();
     let gl = gl_glue::gl::init().unwrap();
     init(opts, gl, wakeup, callbacks)
 }
