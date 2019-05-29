@@ -93,15 +93,19 @@ fn init(
 ) {
     init_logger();
 
-    info!("Log ready");
+    let args = if !opts.args.is_null() {
+        let args = unsafe { CStr::from_ptr(opts.args) };
+        args
+            .to_str()
+            .unwrap_or("")
+            .split(' ')
+            .map(|s| s.to_owned())
+            .collect()
+    } else {
+        vec![]
+    };
 
-    let args = unsafe { CStr::from_ptr(opts.args) };
-    let args = args
-        .to_str()
-        .unwrap_or("")
-        .split(' ')
-        .map(|s| s.to_owned())
-        .collect();
+    info!("Args: {:?}", &args);
 
     let url = unsafe { CStr::from_ptr(opts.url) };
     let url = url.to_str().map(|s| s.to_string()).ok();
