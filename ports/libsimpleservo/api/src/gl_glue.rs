@@ -66,7 +66,11 @@ pub mod egl {
                 let egl = GlesFns::load_with(|addr| {
                     let addr = CString::new(addr.as_bytes()).unwrap();
                     let addr = addr.as_ptr();
-                    GetProcAddress(dll, addr) as *const _
+                    let ptr = GetProcAddress(dll, addr);
+                    if ptr.is_null() {
+                        error!("GetProcAddress failed");
+                    }
+                    ptr as *const _
                 });
                 info!("EGL loaded");
                 Ok(egl)
