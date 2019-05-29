@@ -5,6 +5,10 @@
 #[macro_use]
 extern crate log;
 
+#[cfg(target_os = "windows")]
+mod vslogger;
+
+#[cfg(not(target_os = "windows"))]
 use env_logger;
 use simpleservo::{
     self, gl_glue, Coordinates, EventLoopWaker, HostTrait, InitOptions, ServoGlue, SERVO,
@@ -67,13 +71,29 @@ pub extern "C" fn servo_version() -> *const c_char {
     ptr
 }
 
+#[cfg(target_os = "windows")]
+fn init_logger() {
+    use log::LevelFilter;
+    use vslogger::VSLogger;
+
+    static LOGGER: VSLogger = VSLogger;
+    log::set_logger(&LOGGER).map(|_| log::set_max_level(LevelFilter::Info)).unwrap();
+}
+
+#[cfg(not(target_os = "windows"))]
+fn init_logger() {
+    crate::env_logger::init();
+}
+
 fn init(
     opts: CInitOptions,
     gl: gl_glue::ServoGl,
     wakeup: extern "C" fn(),
     callbacks: CHostCallbacks,
 ) {
-    crate::env_logger::init();
+    init_logger();
+
+    info!("Log ready");
 
     let args = unsafe { CStr::from_ptr(opts.args) };
     let args = args
