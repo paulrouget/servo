@@ -8,7 +8,7 @@ With Visual Studio **2019**:
 
 In your Visual Studio **2017** cmd prompt:
 - make sure libEGL.dll is in your `%LIB%` path: `set LIB=%LIB%;c:\XXX\servo\support\hololens\packages\ANGLE.WindowsStore.2.1.13\bin\UAP\x64\`
-- compile servo: `mach build -d --libsimpleservo --features raqote_backend no_wgl`
+- compile servo: `mach build -d --hololens`
 
 With Visual Studio **2019**:
 - Select emulator or local machine, select configuration (Debug or Release) and press run

@@ -189,6 +189,10 @@ class MachCommands(CommandBase):
                      default=None,
                      action='store_true',
                      help='Enable debug assertions in release')
+    @CommandArgument('--hololens',
+                     default=None,
+                     action='store_true',
+                     help='Build for HoloLens')
     @CommandArgument('--libsimpleservo',
                      default=None,
                      action='store_true',
@@ -201,7 +205,7 @@ class MachCommands(CommandBase):
     @CommandArgument('--without-wgl', default=None, action='store_true')
     def build(self, target=None, release=False, dev=False, jobs=None,
               features=None, android=None, magicleap=None, no_package=False, verbose=False, very_verbose=False,
-              debug_mozjs=False, params=None, with_debug_assertions=False,
+              debug_mozjs=False, params=None, with_debug_assertions=False, hololens=False,
               libsimpleservo=False, with_frame_pointer=False, with_raqote=False, without_wgl=False):
 
         opts = params or []
@@ -222,6 +226,11 @@ class MachCommands(CommandBase):
 
         if magicleap and not target:
             target = "aarch64-linux-android"
+
+        if hololens and not target:
+            libsimpleservo = True
+            with_raqote = True
+            without_wgl = True
 
         if target and not android and not magicleap:
             android = self.handle_android_target(target)
