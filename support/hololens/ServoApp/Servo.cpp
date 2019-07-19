@@ -51,7 +51,7 @@ Servo::Servo(GLsizei width, GLsizei height)
 
   CInitOptions o;
   o.args = NULL;
-  o.url = "https://google.com";
+  o.url = "http://paulrouget.com/webgl-to-webvr/webxr.html";
   o.width = mWindowWidth;
   o.height = mWindowHeight;
   o.density = 1.0;
