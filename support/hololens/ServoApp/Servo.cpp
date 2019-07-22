@@ -8,7 +8,11 @@ void on_shutdown_complete() {}
 
 std::function<void()> Servo::sFlush = []() {};
 std::function<void()> Servo::sMakeCurrent = []() {};
+std::function<void()> Servo::sFlushXR = []() {};
+std::function<void()> Servo::sMakeCurrentXR = []() {};
 std::function<void()> Servo::sWakeUp = []() {};
+std::function<void()> Servo::sToImmersiveMode = []() {};
+
 std::function<void(std::wstring const &)> Servo::sOnAlert =
     [](std::wstring const &) {};
 std::function<void(std::wstring const &)> Servo::sOnTitleChanged =
@@ -40,14 +44,20 @@ void flush() { Servo::sFlush(); }
 
 void make_current() { Servo::sMakeCurrent(); }
 
+void flush_xr() { Servo::sFlushXR(); }
+
+void make_current_xr() { Servo::sMakeCurrentXR(); }
+
 void wakeup() { Servo::sWakeUp(); }
 
 bool on_allow_navigation(const char *url) { return true; };
 
+void to_immersive_mode() { Servo::sToImmersiveMode(); }
+
 void on_animating_changed(bool aAnimating) { Servo::sAnimating = aAnimating; }
 
 Servo::Servo(GLsizei width, GLsizei height)
-    : mAnimating(false), mWindowHeight(height), mWindowWidth(width) {
+    : mWindowHeight(height), mWindowWidth(width) {
 
   CInitOptions o;
   o.args = NULL;
@@ -61,6 +71,8 @@ Servo::Servo(GLsizei width, GLsizei height)
   CHostCallbacks c;
   c.flush = &flush;
   c.make_current = &make_current;
+  c.flush_xr = &flush_xr;
+  c.make_current_xr = &make_current_xr;
   c.on_alert = &on_alert;
   c.on_load_started = &on_load_started;
   c.on_load_ended = &on_load_ended;
@@ -70,6 +82,7 @@ Servo::Servo(GLsizei width, GLsizei height)
   c.on_animating_changed = &on_animating_changed;
   c.on_shutdown_complete = &on_shutdown_complete;
   c.on_allow_navigation = &on_allow_navigation;
+  c.to_immersive_mode = &to_immersive_mode;
 
   init_with_egl(o, &wakeup, c);
 }

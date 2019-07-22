@@ -28,6 +28,10 @@ public:
   // Will be called from GL thread
   static std::function<void()> sFlush;
   static std::function<void()> sMakeCurrent;
+  static std::function<void()> sFlushXR;
+  static std::function<void()> sMakeCurrentXR;
+  static std::function<void()> sToImmersiveMode;
+
   static std::function<void(std::wstring const &)> sOnAlert;
   static std::function<void(std::wstring const &)> sOnTitleChanged;
   static std::function<void(std::wstring const &)> sOnURLChanged;
@@ -36,5 +40,4 @@ public:
 private:
   GLsizei mWindowWidth;
   GLsizei mWindowHeight;
-  bool mAnimating;
 };

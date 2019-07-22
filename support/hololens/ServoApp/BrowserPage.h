@@ -51,11 +51,14 @@ private:
   std::unique_ptr<Concurrency::task<void>> mLoopTask;
   winrt::ServoApp::ImmersiveViewSource mImmersiveViewSource;
   EGLSurface mRenderSurface{EGL_NO_SURFACE};
+  EGLSurface mXRSurface{EGL_NO_SURFACE};
   std::unique_ptr<Servo> mServo;
 
   void BrowserPage::SendEventToServo(Event event);
   std::vector<Event> mEvents;
   std::mutex mEventsMutex;
+
+  bool mImmersiveMode = false;
 
   OpenGLES mOpenGLES; // FIXME: shared pointer
 };

@@ -85,6 +85,7 @@ void BrowserPage::OnImmersiveButtonClicked(IInspectable const &,
 void BrowserPage::OnVisibilityChanged(CoreWindow const &,
                                       VisibilityChangedEventArgs const &args) {
   auto visible = args.Visible();
+  log("BrowserPage::OnVisibilityChanged(%s)", visible ? "true" : "false");
   if (visible && !IsLoopRunning()) {
     StartRenderLoop();
   }
@@ -94,17 +95,25 @@ void BrowserPage::OnVisibilityChanged(CoreWindow const &,
 }
 
 void BrowserPage::CreateRenderSurface() {
+  log("BrowserPage::CreateRenderSurface()");
   if (mRenderSurface == EGL_NO_SURFACE) {
     mRenderSurface = mOpenGLES.CreateSurface(swapChainPanel());
+  }
+  if (mXRSurface == EGL_NO_SURFACE) {
+    mXRSurface = mOpenGLES.CreateSurface(swapChainPanel2());
   }
 }
 
 void BrowserPage::DestroyRenderSurface() {
+  log("BrowserPage::DestroyRenderSurface()");
   mOpenGLES.DestroySurface(mRenderSurface);
   mRenderSurface = EGL_NO_SURFACE;
+  mOpenGLES.DestroySurface(mXRSurface);
+  mXRSurface = EGL_NO_SURFACE;
 }
 
 void BrowserPage::RecoverFromLostDevice() {
+  log("BrowserPage::RecoverFromLostDevice()");
   StopRenderLoop();
   DestroyRenderSurface();
   mOpenGLES.Reset();
@@ -142,6 +151,7 @@ void BrowserPage::Loop(cancellation_token cancel) {
   };
 
   Servo::sMakeCurrent = [=]() {
+    log("Servo::sMakeCurrent()");
     /* EGLint panelWidth = 0; */
     /* EGLint panelHeight = 0; */
     /* mOpenGLES->GetSurfaceDimensions(mRenderSurface, &panelWidth,
@@ -152,6 +162,7 @@ void BrowserPage::Loop(cancellation_token cancel) {
   };
 
   Servo::sFlush = [=]() {
+    log("Servo::sFlush()");
     if (mOpenGLES.SwapBuffers(mRenderSurface) != GL_TRUE) {
       // The call to eglSwapBuffers might not be successful (i.e. due to Device
       // Lost) If the call fails, then we must reinitialize EGL and the GL
@@ -161,10 +172,31 @@ void BrowserPage::Loop(cancellation_token cancel) {
     }
   };
 
-  mOpenGLES.MakeCurrent(mRenderSurface);
+  Servo::sFlushXR = [=]() {
+    log("Servo::sFlushXR()");
+    if (mOpenGLES.SwapBuffers(mXRSurface) != GL_TRUE) {
+      swapChainPanel().Dispatcher().RunAsync(
+          CoreDispatcherPriority::High, [this]() { RecoverFromLostDevice(); });
+    }
+  };
 
+  Servo::sToImmersiveMode = [=]() {
+    log("Servo::sToImmersiveMode()");
+    mImmersiveMode = true;
+  };
+
+  Servo::sMakeCurrentXR = [=]() {
+    log("Servo::sMakeCurrentXR()");
+    mOpenGLES.MakeCurrent(mXRSurface);
+  };
+
+  mOpenGLES.MakeCurrent(mXRSurface);
   EGLint panelWidth = 0;
   EGLint panelHeight = 0;
+  mOpenGLES.GetSurfaceDimensions(mXRSurface, &panelWidth, &panelHeight);
+  glViewport(0, 0, panelWidth, panelHeight);
+
+  mOpenGLES.MakeCurrent(mRenderSurface);
   mOpenGLES.GetSurfaceDimensions(mRenderSurface, &panelWidth, &panelHeight);
   glViewport(0, 0, panelWidth, panelHeight);
   mServo = std::make_unique<Servo>(panelWidth, panelHeight);
@@ -206,6 +238,8 @@ void BrowserPage::Loop(cancellation_token cancel) {
 }
 
 void BrowserPage::StartRenderLoop() {
+  log("BrowserPage:StartRenderLoop()");
+
   if (IsLoopRunning()) {
     return;
   }
@@ -226,6 +260,7 @@ void BrowserPage::StartRenderLoop() {
 }
 
 void BrowserPage::StopRenderLoop() {
+  log("BrowserPage:StopRenderLoop()");
   if (IsLoopRunning()) {
     mLoopCancel.cancel();
     mLoopTask->wait();
