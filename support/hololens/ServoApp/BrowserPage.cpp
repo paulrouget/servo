@@ -255,6 +255,7 @@ void BrowserPage::OnURLChanged(std::wstring url) {
 }
 
 void BrowserPage::Flush() {
+  mOpenGLES.MakeCurrent(mRenderSurface);
   if (mOpenGLES.SwapBuffers(mRenderSurface) != GL_TRUE) {
     // The call to eglSwapBuffers might not be successful (i.e. due to Device
     // Lost) If the call fails, then we must reinitialize EGL and the GL
@@ -266,6 +267,8 @@ void BrowserPage::Flush() {
 void BrowserPage::MakeCurrent() { mOpenGLES.MakeCurrent(mRenderSurface); }
 
 void BrowserPage::FlushXR() {
+  log("BrowserPage::FlushXR(). GL thread: %i", GetCurrentThreadId());
+  mOpenGLES.MakeCurrent(mXRSurface);
   if (mOpenGLES.SwapBuffers(mXRSurface) != GL_TRUE) {
     // The call to eglSwapBuffers might not be successful (i.e. due to Device
     // Lost) If the call fails, then we must reinitialize EGL and the GL
@@ -274,7 +277,10 @@ void BrowserPage::FlushXR() {
   }
 }
 
-void BrowserPage::MakeCurrentXR() { mOpenGLES.MakeCurrent(mXRSurface); }
+void BrowserPage::MakeCurrentXR() {
+  log("BrowserPage::MakeCurrentXR(). GL thread: %i", GetCurrentThreadId());
+  mOpenGLES.MakeCurrent(mXRSurface);
+}
 
 void BrowserPage::WakeUp() {
   // FIXME: this won't work if it's triggered while the thread is not

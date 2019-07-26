@@ -25,21 +25,19 @@ void flush_xr() { sServo->Delegate().FlushXR(); }
 void make_current_xr() { sServo->Delegate().MakeCurrentXR(); }
 void wakeup() { sServo->Delegate().WakeUp(); }
 bool on_allow_navigation(const char *url) {
- return sServo->Delegate().OnAllowNavigation(char2w(url));
+  return sServo->Delegate().OnAllowNavigation(char2w(url));
 };
 void on_animating_changed(bool aAnimating) {
   sServo->Delegate().OnAnimatingChanged(aAnimating);
 }
-void to_immersive_mode() {
-  sServo->Delegate().ToImmersiveMode();
-}
+void to_immersive_mode() { sServo->Delegate().ToImmersiveMode(); }
 
 Servo::Servo(GLsizei width, GLsizei height, ServoDelegate &aDelegate)
     : mWindowHeight(height), mWindowWidth(width), mDelegate(aDelegate) {
 
   capi::CInitOptions o;
   o.args = NULL;
-  o.url = "http://paulrouget.com/webgl-to-webvr/webxr.html";
+  o.url = "http://paulrouget.com";
   o.width = mWindowWidth;
   o.height = mWindowHeight;
   o.density = 1.0;
