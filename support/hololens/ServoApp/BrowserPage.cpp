@@ -255,8 +255,10 @@ void BrowserPage::OnURLChanged(std::wstring url) {
 }
 
 void BrowserPage::Flush() {
-  mOpenGLES.MakeCurrent(mRenderSurface);
+  log("BrowserPage::Flush(). GL thread: %i", GetCurrentThreadId());
+  // mOpenGLES.MakeCurrent(mRenderSurface);
   if (mOpenGLES.SwapBuffers(mRenderSurface) != GL_TRUE) {
+    log("BrowserPage::Flush() FAILED");
     // The call to eglSwapBuffers might not be successful (i.e. due to Device
     // Lost) If the call fails, then we must reinitialize EGL and the GL
     // resources.
@@ -264,16 +266,16 @@ void BrowserPage::Flush() {
   }
 }
 
-void BrowserPage::MakeCurrent() { mOpenGLES.MakeCurrent(mRenderSurface); }
+void BrowserPage::MakeCurrent() {
+  log("BrowserPage::MakeCurrent(). GL thread: %i", GetCurrentThreadId());
+  mOpenGLES.MakeCurrent(mRenderSurface);
+}
 
 void BrowserPage::FlushXR() {
   log("BrowserPage::FlushXR(). GL thread: %i", GetCurrentThreadId());
-  mOpenGLES.MakeCurrent(mXRSurface);
+  // mOpenGLES.MakeCurrent(mXRSurface);
   if (mOpenGLES.SwapBuffers(mXRSurface) != GL_TRUE) {
-    // The call to eglSwapBuffers might not be successful (i.e. due to Device
-    // Lost) If the call fails, then we must reinitialize EGL and the GL
-    // resources.
-    RunOnUIThread([=] { RecoverFromLostDevice(); });
+    log("BrowserPage::FlushXR() FAILED");
   }
 }
 
