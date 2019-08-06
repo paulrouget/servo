@@ -255,6 +255,15 @@ void BrowserPage::OnStopButtonClicked(IInspectable const &,
   RunOnGLThread([=] { mServo->Stop(); });
 }
 
+void BrowserPage::OnURLEdited(IInspectable const & sender,
+  Input::KeyRoutedEventArgs const & e) {
+  if (e.Key() == Windows::System::VirtualKey::Enter) {
+    // SwapChainPanel can't be focus. Focusing the stopButton for now.
+    // We'll need to build a custom element to make the swapchain focusable.
+  }
+}
+
+
 void BrowserPage::OnImmersiveButtonClicked(IInspectable const &,
                                            RoutedEventArgs const &) {
   if (HolographicSpace::IsAvailable()) {
