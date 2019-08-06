@@ -1,0 +1,10 @@
+// BgLabelControl.idl
+namespace ServoApp
+{
+    runtimeclass ServoControl : Windows.UI.Xaml.Controls.Control
+    {
+        ServoControl();
+        static Windows.UI.Xaml.DependencyProperty LabelProperty{ get; };
+        String Label;
+    }
+}

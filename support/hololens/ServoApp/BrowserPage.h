@@ -8,6 +8,8 @@
 #include "ImmersiveView.h"
 #include "OpenGLES.h"
 #include "Servo.h"
+#include "ServoControl.h"
+
 
 namespace winrt::ServoApp::implementation {
 

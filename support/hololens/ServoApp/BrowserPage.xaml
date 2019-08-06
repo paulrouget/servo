@@ -27,7 +27,8 @@
       </StackPanel>
       <TextBox Text="" IsTabStop="true" PlaceholderText="Type a URL" x:Name="urlTextbox" Grid.Column="1" KeyUp="OnURLEdited"/>
       <StackPanel Orientation="Horizontal" Grid.Column="2">
-        <Button x:Name="immersiveButton" Click="OnImmersiveButtonClicked">Run Immersive</Button>
+        <local:ServoControl Background="Red" Label="Hello, World!"/>
+        <!--<Button x:Name="immersiveButton" Click="OnImmersiveButtonClicked">Run Immersive</Button>-->
       </StackPanel>
     </Grid>
     <!-- FIXME: we need a custom element to handle focus -->
