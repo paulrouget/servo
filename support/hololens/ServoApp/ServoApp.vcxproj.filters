@@ -13,8 +13,6 @@
     <ClCompile Include="logs.cpp" />
     <ClCompile Include="ImmersiveView.cpp" />
     <ClCompile Include="BrowserPage.cpp" />
-    <ClCompile Include="Servo.cpp" />
-    <ClCompile Include="OpenGLES.cpp" />
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Common\CameraResources.cpp">
       <Filter>Common</Filter>
@@ -32,14 +30,18 @@
     <ClCompile Include="ServoControl.cpp">
       <Filter>ServoControl</Filter>
     </ClCompile>
+    <ClCompile Include="Servo.cpp">
+      <Filter>ServoControl</Filter>
+    </ClCompile>
+    <ClCompile Include="OpenGLES.cpp">
+      <Filter>ServoControl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="logs.h" />
     <ClInclude Include="ImmersiveView.h" />
     <ClInclude Include="BrowserPage.h" />
-    <ClInclude Include="Servo.h" />
-    <ClInclude Include="OpenGLES.h" />
     <ClInclude Include="App.h" />
     <ClInclude Include="Common\CameraResources.h">
       <Filter>Common</Filter>
@@ -64,6 +66,12 @@
     </ClInclude>
     <ClInclude Include="ImmersiveMain.h" />
     <ClInclude Include="ServoControl.h">
+      <Filter>ServoControl</Filter>
+    </ClInclude>
+    <ClInclude Include="Servo.h">
+      <Filter>ServoControl</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenGLES.h">
       <Filter>ServoControl</Filter>
     </ClInclude>
   </ItemGroup>

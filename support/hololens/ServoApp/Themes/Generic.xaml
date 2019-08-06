@@ -10,7 +10,7 @@
         <ControlTemplate TargetType="local:ServoControl">
           <Grid Background="{TemplateBinding Background}">
             <!--<TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Text="{TemplateBinding Label}"/>-->
-            <SwapChainPanel x:Name="swapChainPanel2" MinHeight="200" MinWidth="200" ManipulationMode="All">
+            <SwapChainPanel x:Name="swapChainPanel" MinHeight="200" MinWidth="200" ManipulationMode="All">
             </SwapChainPanel>
           </Grid>
         </ControlTemplate>

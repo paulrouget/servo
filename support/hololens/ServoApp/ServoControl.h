@@ -1,5 +1,6 @@
 #pragma once
 #include "ServoControl.g.h"
+#include "OpenGLES.h"
 
 namespace winrt::ServoApp::implementation
 {
@@ -23,6 +24,9 @@ namespace winrt::ServoApp::implementation
 
   private:
     static Windows::UI::Xaml::DependencyProperty m_labelProperty;
+
+    OpenGLES mOpenGLES;
+
   };
 }
 namespace winrt::ServoApp::factory_implementation

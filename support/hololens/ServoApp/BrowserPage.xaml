@@ -27,12 +27,9 @@
       </StackPanel>
       <TextBox Text="" IsTabStop="true" PlaceholderText="Type a URL" x:Name="urlTextbox" Grid.Column="1" KeyUp="OnURLEdited"/>
       <StackPanel Orientation="Horizontal" Grid.Column="2">
-        <local:ServoControl Background="Red" Label="Hello, World!"/>
-        <!--<Button x:Name="immersiveButton" Click="OnImmersiveButtonClicked">Run Immersive</Button>-->
+        <Button x:Name="immersiveButton" Click="OnImmersiveButtonClicked">Run Immersive</Button>
       </StackPanel>
     </Grid>
-    <!-- FIXME: we need a custom element to handle focus -->
-    <SwapChainPanel x:Name="swapChainPanel" MinHeight="200" MinWidth="200" Grid.Row="1" ManipulationMode="All">
-    </SwapChainPanel>
+    <local:ServoControl Background="Red" Label="Hello, World!" x:Name="servoControl" Grid.Row="1"/>
   </Grid>
 </Page>
