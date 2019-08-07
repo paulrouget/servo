@@ -2,28 +2,247 @@
 #include "ServoControl.h"
 #include "ServoControl.g.cpp"
 
-namespace winrt::ServoApp::implementation
-{
-  Windows::UI::Xaml::DependencyProperty ServoControl::m_labelProperty =
-    Windows::UI::Xaml::DependencyProperty::Register(
-      L"Label",
-      winrt::xaml_typename<winrt::hstring>(),
-      winrt::xaml_typename<ServoApp::ServoControl>(),
-      Windows::UI::Xaml::PropertyMetadata{
-        winrt::box_value(L"default label"),
-        Windows::UI::Xaml::PropertyChangedCallback{
-        &ServoControl::OnLabelChanged
-      } }
-  );
+using namespace std::placeholders;
+using namespace winrt::Windows::UI::Xaml;
+using namespace winrt::Windows::UI::Core;
+using namespace winrt::Windows::UI::ViewManagement;
+using namespace winrt::Windows::Foundation;
+using namespace winrt::Windows::Graphics::Holographic;
+using namespace concurrency;
+using namespace servo;
 
-  void ServoControl::OnLabelChanged(Windows::UI::Xaml::DependencyObject const& d, Windows::UI::Xaml::DependencyPropertyChangedEventArgs const& /* e */)
-  {
-    if (ServoApp::ServoControl theControl{ d.try_as<ServoApp::ServoControl>() })
-    {
-      // Call members of the projected type via theControl.
+namespace winrt::ServoApp::implementation {
 
-      ServoApp::implementation::ServoControl* ptr{ winrt::get_self<ServoApp::implementation::ServoControl>(theControl) };
-      // Call members of the implementation type via ptr.
+void ServoControl::Shutdown() {
+  if (mServo != nullptr) {
+    if (!mLooping) {
+      // FIXME: this should not happen. In that case, we can't send the
+      // shutdown event to Servo.
+    } else {
+      RunOnGLThread([=] { mServo->RequestShutdown(); });
+      mLoopTask->wait();
+      mLoopTask.reset();
+      mServo.reset();
     }
   }
 }
+
+// Control overrides.
+void ServoControl::OnPointerPressed(
+    Windows::UI::Xaml::Input::PointerRoutedEventArgs const & /* e */) const {};
+
+void ServoControl::OnApplyTemplate() {
+  log("ServoControl::OnApplyTemplate()");
+
+  Control::OnApplyTemplate();
+
+  InitializeConditionVariable(&mGLCondVar);
+  InitializeCriticalSection(&mGLLock);
+
+  CreateRenderSurface();
+  StartRenderLoop();
+
+  Panel().PointerReleased(
+      std::bind(&ServoControl::OnSurfaceClicked, this, _1, _2));
+  Panel().ManipulationDelta(
+      std::bind(&ServoControl::OnSurfaceManipulationDelta, this, _1, _2));
+};
+
+Windows::UI::Xaml::Controls::SwapChainPanel ServoControl::Panel() {
+  return GetTemplateChild(L"swapChainPanel")
+      .as<Windows::UI::Xaml::Controls::SwapChainPanel>();
+}
+
+void ServoControl::CreateRenderSurface() {
+  if (mRenderSurface == EGL_NO_SURFACE) {
+    mRenderSurface = mOpenGLES.CreateSurface(Panel());
+  }
+}
+
+void ServoControl::DestroyRenderSurface() {
+  mOpenGLES.DestroySurface(mRenderSurface);
+  mRenderSurface = EGL_NO_SURFACE;
+}
+
+void ServoControl::RecoverFromLostDevice() {
+  StopRenderLoop();
+  DestroyRenderSurface();
+  mOpenGLES.Reset();
+  CreateRenderSurface();
+  StartRenderLoop();
+}
+
+void ServoControl::OnSurfaceManipulationDelta(
+    IInspectable const &, Input::ManipulationDeltaRoutedEventArgs const &e) {
+  auto x = e.Position().X;
+  auto y = e.Position().Y;
+  auto dx = e.Delta().Translation.X;
+  auto dy = e.Delta().Translation.Y;
+  RunOnGLThread([=] { mServo->Scroll(x, y, dx, dy); });
+  e.Handled(true);
+}
+
+void ServoControl::OnSurfaceClicked(IInspectable const &,
+                                    Input::PointerRoutedEventArgs const &e) {
+  auto coords = e.GetCurrentPoint(Panel());
+  auto x = coords.Position().X;
+  auto y = coords.Position().Y;
+  RunOnGLThread([=] { mServo->Click(x, y); });
+  e.Handled(true);
+}
+
+void ServoControl::RunOnGLThread(std::function<void()> task) {
+  EnterCriticalSection(&mGLLock);
+  mTasks.push_back(task);
+  LeaveCriticalSection(&mGLLock);
+  WakeConditionVariable(&mGLCondVar);
+}
+
+///**** GL THREAD LOOP ****/
+
+void ServoControl::Loop() {
+  log("BrowserPage::Loop(). GL thread: %i", GetCurrentThreadId());
+
+  mOpenGLES.MakeCurrent(mRenderSurface);
+
+  EGLint panelWidth = 0;
+  EGLint panelHeight = 0;
+  mOpenGLES.GetSurfaceDimensions(mRenderSurface, &panelWidth, &panelHeight);
+  glViewport(0, 0, panelWidth, panelHeight);
+
+  if (mServo == nullptr) {
+    log("Entering loop");
+    ServoDelegate *sd = static_cast<ServoDelegate *>(this);
+    mServo = std::make_unique<Servo>(panelWidth, panelHeight, *sd);
+  } else {
+    // FIXME: this will fail since create_task didn't pick the thread
+    // where Servo was running initially.
+    throw winrt::hresult_error(E_FAIL, L"Recovering loop unimplemented");
+  }
+
+  mServo->SetBatchMode(true);
+
+  while (true) {
+    log("XXX tick");
+    EnterCriticalSection(&mGLLock);
+    while (mTasks.size() == 0 && !mAnimating && mLooping) {
+      SleepConditionVariableCS(&mGLCondVar, &mGLLock, INFINITE);
+    }
+    if (!mLooping) {
+      LeaveCriticalSection(&mGLLock);
+      break;
+    }
+    for (auto &&task : mTasks) {
+      task();
+    }
+    mTasks.clear();
+    LeaveCriticalSection(&mGLLock);
+    mServo->PerformUpdates();
+  }
+  mServo->DeInit();
+  cancel_current_task();
+} // namespace winrt::ServoApp::implementation
+
+void ServoControl::StartRenderLoop() {
+  if (mLooping) {
+#if defined _DEBUG
+    throw winrt::hresult_error(E_FAIL, L"GL thread is already looping");
+#else
+    return;
+#endif
+  }
+  mLooping = true;
+  log("BrowserPage::StartRenderLoop(). UI thread: %i", GetCurrentThreadId());
+  auto task = Concurrency::create_task([=] { Loop(); });
+  mLoopTask = std::make_unique<Concurrency::task<void>>(task);
+}
+
+void ServoControl::StopRenderLoop() {
+  if (mLooping) {
+    EnterCriticalSection(&mGLLock);
+    mLooping = false;
+    LeaveCriticalSection(&mGLLock);
+    WakeConditionVariable(&mGLCondVar);
+    mLoopTask->wait();
+    mLoopTask.reset();
+  }
+}
+
+/**** SERVO CALLBACKS ****/
+
+void ServoControl::OnLoadStarted() {
+  RunOnUIThread([=] {
+    // reloadButton().IsEnabled(false);
+    // stopButton().IsEnabled(true);
+  });
+}
+
+void ServoControl::OnLoadEnded() {
+  RunOnUIThread([=] {
+    // reloadButton().IsEnabled(true);
+    // stopButton().IsEnabled(false);
+  });
+}
+
+void ServoControl::OnHistoryChanged(bool back, bool forward) {
+  RunOnUIThread([=] {
+    // backButton().IsEnabled(back);
+    // forwardButton().IsEnabled(forward);
+  });
+}
+
+void ServoControl::OnShutdownComplete() {
+  EnterCriticalSection(&mGLLock);
+  mLooping = false;
+  LeaveCriticalSection(&mGLLock);
+}
+
+void ServoControl::OnAlert(std::wstring message) {
+  // FIXME: make this sync
+  RunOnUIThread([=] {
+    Windows::UI::Popups::MessageDialog msg{message};
+    msg.ShowAsync();
+  });
+}
+
+void ServoControl::OnTitleChanged(std::wstring title) {
+  RunOnUIThread([=] { ApplicationView::GetForCurrentView().Title(title); });
+}
+
+void ServoControl::OnURLChanged(std::wstring url) {
+  // RunOnUIThread([=] { urlTextbox().Text(url); });
+}
+
+void ServoControl::Flush() {
+  log("FLUSH");
+  if (mOpenGLES.SwapBuffers(mRenderSurface) != GL_TRUE) {
+    // The call to eglSwapBuffers might not be successful (i.e. due to Device
+    // Lost) If the call fails, then we must reinitialize EGL and the GL
+    // resources.
+    log("OH NO");
+    RunOnUIThread([=] { RecoverFromLostDevice(); });
+  }
+}
+
+void ServoControl::MakeCurrent() { mOpenGLES.MakeCurrent(mRenderSurface); }
+
+void ServoControl::WakeUp() {
+  RunOnGLThread([=] {});
+}
+
+bool ServoControl::OnAllowNavigation(std::wstring) { return true; }
+
+void ServoControl::OnAnimatingChanged(bool animating) {
+  EnterCriticalSection(&mGLLock);
+  mAnimating = animating;
+  LeaveCriticalSection(&mGLLock);
+  WakeConditionVariable(&mGLCondVar);
+}
+
+template <typename Callable> void ServoControl::RunOnUIThread(Callable cb) {
+  Dispatcher().RunAsync(Windows::UI::Core::CoreDispatcherPriority::High, cb);
+  // Windows::UI::Core::CoreWindow::GetForCurrentThread().Dispatcher().RunAsync(
+  //     Windows::UI::Core::CoreDispatcherPriority::High, cb);
+}
+
+} // namespace winrt::ServoApp::implementation
