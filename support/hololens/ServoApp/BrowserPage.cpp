@@ -22,6 +22,8 @@ namespace winrt::ServoApp::implementation {
   BrowserPage::BrowserPage() {
     log("BrowserPage::BrowserPage()");
     InitializeComponent();
+    
+    // FIXME: move everything to its own function
     servoControl().OnURLChanged(
         [=](const auto &, hstring url) { urlTextbox().Text(url); });
     servoControl().OnTitleChanged(

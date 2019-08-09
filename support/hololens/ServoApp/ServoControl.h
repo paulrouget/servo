@@ -30,20 +30,17 @@ struct ServoControl : ServoControlT<ServoControl>, public servo::ServoDelegate {
   };
   void OnTitleChanged(winrt::event_token const& token) noexcept { mOnTitleChangedEvent.remove(token); }
 
-  winrt::event_token OnHistoryChanged(
-      ServoControl::HistoryChangedDelegate const &handler){
+  winrt::event_token OnHistoryChanged(HistoryChangedDelegate const &handler){
     return mOnHistoryChangedEvent.add(handler);
   };
   void OnHistoryChanged(winrt::event_token const& token) noexcept { mOnHistoryChangedEvent.remove(token); }
 
-  winrt::event_token
-  OnLoadStarted(ServoControl::LoadStatusChangedDelegate const &handler){
+  winrt::event_token OnLoadStarted(LoadStatusChangedDelegate const &handler){
     return mOnLoadStartedEvent.add(handler);
   };
   void OnLoadStarted(winrt::event_token const& token) noexcept { mOnLoadStartedEvent.remove(token); }
 
-  winrt::event_token
-  OnLoadEnded(ServoControl::LoadStatusChangedDelegate const &handler){
+  winrt::event_token OnLoadEnded(LoadStatusChangedDelegate const &handler){
     return mOnLoadEndedEvent.add(handler);
   };
   void OnLoadEnded(winrt::event_token const& token) noexcept { mOnLoadEndedEvent.remove(token); }

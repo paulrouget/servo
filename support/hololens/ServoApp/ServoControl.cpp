@@ -43,6 +43,7 @@ void ServoControl::OnLoaded(IInspectable const &, RoutedEventArgs const &) {
   StartRenderLoop();
 }
 
+// FIXME: is there a better way of doing this?
 Windows::UI::Xaml::Controls::SwapChainPanel ServoControl::Panel() {
   return GetTemplateChild(L"swapChainPanel")
       .as<Windows::UI::Xaml::Controls::SwapChainPanel>();
