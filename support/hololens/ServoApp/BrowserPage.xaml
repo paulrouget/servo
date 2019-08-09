@@ -30,6 +30,6 @@
         <Button x:Name="immersiveButton" Click="OnImmersiveButtonClicked">Run Immersive</Button>
       </StackPanel>
     </Grid>
-    <local:ServoControl Background="Red" Label="Hello, World!" x:Name="servoControl" Grid.Row="1"/>
+    <local:ServoControl x:Name="servoControl" Grid.Row="1"/>
   </Grid>
 </Page>

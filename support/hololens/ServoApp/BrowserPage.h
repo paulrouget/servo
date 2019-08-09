@@ -31,8 +31,6 @@ public:
   void Shutdown();
 
 private:
-  void OnPageLoaded(Windows::Foundation::IInspectable const &,
-                    Windows::UI::Xaml::RoutedEventArgs const &);
   winrt::ServoApp::ImmersiveViewSource mImmersiveViewSource;
 };
 } // namespace winrt::ServoApp::implementation

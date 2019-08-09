@@ -13,6 +13,11 @@ using namespace servo;
 
 namespace winrt::ServoApp::implementation {
 
+ServoControl::ServoControl() {
+  DefaultStyleKey(winrt::box_value(L"ServoApp.ServoControl"));
+  Loaded(std::bind(&ServoControl::OnLoaded, this, _1, _2));
+}
+
 void ServoControl::Shutdown() {
   if (mServo != nullptr) {
     if (!mLooping) {
@@ -31,22 +36,16 @@ void ServoControl::Shutdown() {
 void ServoControl::OnPointerPressed(
     Windows::UI::Xaml::Input::PointerRoutedEventArgs const & /* e */) const {};
 
-void ServoControl::OnApplyTemplate() {
-  log("ServoControl::OnApplyTemplate()");
-
-  Control::OnApplyTemplate();
-
-  InitializeConditionVariable(&mGLCondVar);
-  InitializeCriticalSection(&mGLLock);
-
-  CreateRenderSurface();
-  StartRenderLoop();
-
+void ServoControl::OnLoaded(IInspectable const &, RoutedEventArgs const &) {
   Panel().PointerReleased(
       std::bind(&ServoControl::OnSurfaceClicked, this, _1, _2));
   Panel().ManipulationDelta(
       std::bind(&ServoControl::OnSurfaceManipulationDelta, this, _1, _2));
-};
+  InitializeConditionVariable(&mGLCondVar);
+  InitializeCriticalSection(&mGLLock);
+  CreateRenderSurface();
+  StartRenderLoop();
+}
 
 Windows::UI::Xaml::Controls::SwapChainPanel ServoControl::Panel() {
   return GetTemplateChild(L"swapChainPanel")
@@ -91,6 +90,22 @@ void ServoControl::OnSurfaceClicked(IInspectable const &,
   e.Handled(true);
 }
 
+void ServoControl::GoBack() {
+  RunOnGLThread([=] { mServo->GoBack(); });
+}
+void ServoControl::GoForward() {
+  RunOnGLThread([=] { mServo->GoForward(); });
+}
+void ServoControl::Reload() {
+  RunOnGLThread([=] { mServo->Reload(); });
+}
+void ServoControl::Stop() {
+  RunOnGLThread([=] { mServo->Stop(); });
+}
+void ServoControl::Navigate(hstring url) {
+  // FIXME
+}
+
 void ServoControl::RunOnGLThread(std::function<void()> task) {
   EnterCriticalSection(&mGLLock);
   mTasks.push_back(task);
@@ -98,7 +113,7 @@ void ServoControl::RunOnGLThread(std::function<void()> task) {
   WakeConditionVariable(&mGLCondVar);
 }
 
-///**** GL THREAD LOOP ****/
+/**** GL THREAD LOOP ****/
 
 void ServoControl::Loop() {
   log("BrowserPage::Loop(). GL thread: %i", GetCurrentThreadId());
@@ -123,7 +138,6 @@ void ServoControl::Loop() {
   mServo->SetBatchMode(true);
 
   while (true) {
-    log("XXX tick");
     EnterCriticalSection(&mGLLock);
     while (mTasks.size() == 0 && !mAnimating && mLooping) {
       SleepConditionVariableCS(&mGLCondVar, &mGLLock, INFINITE);
@@ -141,7 +155,7 @@ void ServoControl::Loop() {
   }
   mServo->DeInit();
   cancel_current_task();
-} // namespace winrt::ServoApp::implementation
+}
 
 void ServoControl::StartRenderLoop() {
   if (mLooping) {
@@ -170,34 +184,26 @@ void ServoControl::StopRenderLoop() {
 
 /**** SERVO CALLBACKS ****/
 
-void ServoControl::OnLoadStarted() {
-  RunOnUIThread([=] {
-    // reloadButton().IsEnabled(false);
-    // stopButton().IsEnabled(true);
-  });
+void ServoControl::OnServoLoadStarted() {
+  RunOnUIThread([=] { mOnLoadStartedEvent(); });
 }
 
-void ServoControl::OnLoadEnded() {
-  RunOnUIThread([=] {
-    // reloadButton().IsEnabled(true);
-    // stopButton().IsEnabled(false);
-  });
+void ServoControl::OnServoLoadEnded() {
+  RunOnUIThread([=] { mOnLoadEndedEvent(); });
 }
 
-void ServoControl::OnHistoryChanged(bool back, bool forward) {
-  RunOnUIThread([=] {
-    // backButton().IsEnabled(back);
-    // forwardButton().IsEnabled(forward);
-  });
+void ServoControl::OnServoHistoryChanged(bool back, bool forward) {
+  // FIXME: did this work?
+  RunOnUIThread([=] { mOnHistoryChangedEvent(back, forward); });
 }
 
-void ServoControl::OnShutdownComplete() {
+void ServoControl::OnServoShutdownComplete() {
   EnterCriticalSection(&mGLLock);
   mLooping = false;
   LeaveCriticalSection(&mGLLock);
 }
 
-void ServoControl::OnAlert(std::wstring message) {
+void ServoControl::OnServoAlert(hstring message) {
   // FIXME: make this sync
   RunOnUIThread([=] {
     Windows::UI::Popups::MessageDialog msg{message};
@@ -205,21 +211,19 @@ void ServoControl::OnAlert(std::wstring message) {
   });
 }
 
-void ServoControl::OnTitleChanged(std::wstring title) {
-  RunOnUIThread([=] { ApplicationView::GetForCurrentView().Title(title); });
+void ServoControl::OnServoTitleChanged(hstring title) {
+  RunOnUIThread([=] { mOnTitleChangedEvent(*this, title); });
 }
 
-void ServoControl::OnURLChanged(std::wstring url) {
-  // RunOnUIThread([=] { urlTextbox().Text(url); });
+void ServoControl::OnServoURLChanged(hstring url) {
+  RunOnUIThread([=] { mOnURLChangedEvent(*this, url); });
 }
 
 void ServoControl::Flush() {
-  log("FLUSH");
   if (mOpenGLES.SwapBuffers(mRenderSurface) != GL_TRUE) {
     // The call to eglSwapBuffers might not be successful (i.e. due to Device
     // Lost) If the call fails, then we must reinitialize EGL and the GL
     // resources.
-    log("OH NO");
     RunOnUIThread([=] { RecoverFromLostDevice(); });
   }
 }
@@ -230,9 +234,9 @@ void ServoControl::WakeUp() {
   RunOnGLThread([=] {});
 }
 
-bool ServoControl::OnAllowNavigation(std::wstring) { return true; }
+bool ServoControl::OnServoAllowNavigation(hstring) { return true; }
 
-void ServoControl::OnAnimatingChanged(bool animating) {
+void ServoControl::OnServoAnimatingChanged(bool animating) {
   EnterCriticalSection(&mGLLock);
   mAnimating = animating;
   LeaveCriticalSection(&mGLLock);
@@ -241,8 +245,6 @@ void ServoControl::OnAnimatingChanged(bool animating) {
 
 template <typename Callable> void ServoControl::RunOnUIThread(Callable cb) {
   Dispatcher().RunAsync(Windows::UI::Core::CoreDispatcherPriority::High, cb);
-  // Windows::UI::Core::CoreWindow::GetForCurrentThread().Dispatcher().RunAsync(
-  //     Windows::UI::Core::CoreDispatcherPriority::High, cb);
 }
 
 } // namespace winrt::ServoApp::implementation

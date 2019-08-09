@@ -9,8 +9,7 @@
       <Setter.Value>
         <ControlTemplate TargetType="local:ServoControl">
           <Grid>
-            <!--<TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Text="{TemplateBinding Label}"/>-->
-            <SwapChainPanel x:Name="swapChainPanel" MinHeight="200" MinWidth="200" ManipulationMode="All" BorderThickness="5" BorderBrush="Blue">
+            <SwapChainPanel x:Name="swapChainPanel" MinHeight="200" MinWidth="200" ManipulationMode="All">
             </SwapChainPanel>
           </Grid>
         </ControlTemplate>

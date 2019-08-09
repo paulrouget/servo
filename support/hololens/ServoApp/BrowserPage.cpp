@@ -19,37 +19,57 @@ using namespace concurrency;
 using namespace servo;
 
 namespace winrt::ServoApp::implementation {
-BrowserPage::BrowserPage() {
-  log("BrowserPage::BrowserPage()");
-  InitializeComponent();
+  BrowserPage::BrowserPage() {
+    log("BrowserPage::BrowserPage()");
+    InitializeComponent();
+    servoControl().OnURLChanged(
+        [=](const auto &, hstring url) { urlTextbox().Text(url); });
+    servoControl().OnTitleChanged(
+        [=](const auto &, hstring title) { });
+    servoControl().OnHistoryChanged(
+        [=](bool back, bool forward) {
+        backButton().IsEnabled(back);
+        forwardButton().IsEnabled(forward);
+        });
+    servoControl().OnLoadStarted(
+        [=] {
+        reloadButton().IsEnabled(false);
+        stopButton().IsEnabled(true);
+        });
+    servoControl().OnLoadEnded(
+        [=] {
+        reloadButton().IsEnabled(true);
+        stopButton().IsEnabled(false);
+        });
 }
 
 void BrowserPage::Shutdown() {
   log("BrowserPage::Shutdown()");
-  // FIXME: control.Shutdown();
+  servoControl().Shutdown();
 }
 
 
 /**** USER INTERACTIONS WITH UI ****/
 
 void BrowserPage::OnBackButtonClicked(IInspectable const &,
+
                                       RoutedEventArgs const &) {
-  //RunOnGLThread([=] { mServo->GoBack(); });
+  servoControl().GoBack();
 }
 
 void BrowserPage::OnForwardButtonClicked(IInspectable const &,
                                          RoutedEventArgs const &) {
-  //RunOnGLThread([=] { mServo->GoForward(); });
+  servoControl().GoForward();
 }
 
 void BrowserPage::OnReloadButtonClicked(IInspectable const &,
                                         RoutedEventArgs const &) {
-  //RunOnGLThread([=] { mServo->Reload(); });
+  servoControl().Reload();
 }
 
 void BrowserPage::OnStopButtonClicked(IInspectable const &,
                                       RoutedEventArgs const &) {
-  //RunOnGLThread([=] { mServo->Stop(); });
+  servoControl().Stop();
 }
 
 void BrowserPage::OnURLEdited(IInspectable const & sender,

@@ -20,17 +20,17 @@ public:
   // Called from any thread
   virtual void WakeUp() = 0;
   // Called from GL thread
-  virtual void OnLoadStarted() = 0;
-  virtual void OnLoadEnded() = 0;
-  virtual void OnHistoryChanged(bool, bool) = 0;
-  virtual void OnShutdownComplete() = 0;
-  virtual void OnTitleChanged(std::wstring) = 0;
-  virtual void OnAlert(std::wstring) = 0;
-  virtual void OnURLChanged(std::wstring) = 0;
+  virtual void OnServoLoadStarted() = 0;
+  virtual void OnServoLoadEnded() = 0;
+  virtual void OnServoHistoryChanged(bool, bool) = 0;
+  virtual void OnServoShutdownComplete() = 0;
+  virtual void OnServoTitleChanged(winrt::hstring) = 0;
+  virtual void OnServoAlert(winrt::hstring) = 0;
+  virtual void OnServoURLChanged(winrt::hstring) = 0;
+  virtual bool OnServoAllowNavigation(winrt::hstring) = 0;
+  virtual void OnServoAnimatingChanged(bool) = 0;
   virtual void Flush() = 0;
   virtual void MakeCurrent() = 0;
-  virtual bool OnAllowNavigation(std::wstring) = 0;
-  virtual void OnAnimatingChanged(bool) = 0;
 
 protected:
   virtual ~ServoDelegate(){};
@@ -73,6 +73,6 @@ private:
 // the Servo instance. See https://github.com/servo/servo/issues/22967
 static Servo *sServo = nullptr;
 
-std::wstring char2w(const char *c_str);
+winrt::hstring char2hstring(const char *c_str);
 
 } // namespace servo
