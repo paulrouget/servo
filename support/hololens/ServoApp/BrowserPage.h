@@ -27,11 +27,11 @@ public:
                            Windows::UI::Xaml::RoutedEventArgs const &);
   void OnURLEdited(Windows::Foundation::IInspectable const &,
                    Windows::UI::Xaml::Input::KeyRoutedEventArgs const &);
-
   void Shutdown();
 
 private:
   winrt::ServoApp::ImmersiveViewSource mImmersiveViewSource;
+  void BindServoEvents();
 };
 } // namespace winrt::ServoApp::implementation
 

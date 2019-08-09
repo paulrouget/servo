@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Servo.h"
 
-namespace servo {
+namespace winrt::servo {
 
 void on_load_started() { sServo->Delegate().OnServoLoadStarted(); }
 void on_load_ended() { sServo->Delegate().OnServoLoadEnded(); }
@@ -60,8 +60,8 @@ Servo::Servo(GLsizei width, GLsizei height, ServoDelegate &aDelegate)
 
 Servo::~Servo() { sServo = nullptr; }
 
-// FIXME: this is super ugly
 winrt::hstring char2hstring(const char *c_str) {
+  // FIXME: this is super ugly
   auto str = std::string(c_str);
   int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
   std::wstring str2(size_needed, 0);

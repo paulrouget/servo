@@ -6,11 +6,9 @@
 using namespace std::placeholders;
 using namespace winrt::Windows::UI::Xaml;
 using namespace winrt::Windows::UI::Core;
-using namespace winrt::Windows::UI::ViewManagement;
 using namespace winrt::Windows::Foundation;
-using namespace winrt::Windows::Graphics::Holographic;
 using namespace concurrency;
-using namespace servo;
+using namespace winrt::servo;
 
 namespace winrt::ServoApp::implementation {
 
@@ -44,10 +42,10 @@ void ServoControl::OnLoaded(IInspectable const &, RoutedEventArgs const &) {
   StartRenderLoop();
 }
 
-// FIXME: is there a better way of doing this?
-Windows::UI::Xaml::Controls::SwapChainPanel ServoControl::Panel() {
+Controls::SwapChainPanel ServoControl::Panel() {
+  // FIXME: is there a better way of doing this?
   return GetTemplateChild(L"swapChainPanel")
-      .as<Windows::UI::Xaml::Controls::SwapChainPanel>();
+      .as<Controls::SwapChainPanel>();
 }
 
 void ServoControl::CreateRenderSurface() {
@@ -100,15 +98,14 @@ void ServoControl::Reload() {
 void ServoControl::Stop() {
   RunOnGLThread([=] { mServo->Stop(); });
 }
-Windows::Foundation::Uri ServoControl::LoadURIOrSearch(hstring input) {
+Uri ServoControl::LoadURIOrSearch(hstring input) {
   auto uri = TryParseURI(input);
   if (uri == std::nullopt) {
     bool has_dot = wcsstr(input.c_str(), L".") != nullptr;
     hstring input2 = L"https://" + input;
     uri = TryParseURI(input2);
     if (uri == std::nullopt || !has_dot) {
-      hstring input3 = L"https://duckduckgo.com/html/?q=" +
-        Windows::Foundation::Uri::EscapeComponent(input);
+      hstring input3 = L"https://duckduckgo.com/html/?q=" + Uri::EscapeComponent(input);
       uri = TryParseURI(input3);
     }
   }
@@ -254,7 +251,7 @@ void ServoControl::OnServoAnimatingChanged(bool animating) {
 }
 
 template <typename Callable> void ServoControl::RunOnUIThread(Callable cb) {
-  Dispatcher().RunAsync(Windows::UI::Core::CoreDispatcherPriority::High, cb);
+  Dispatcher().RunAsync(CoreDispatcherPriority::High, cb);
 }
 
 } // namespace winrt::ServoApp::implementation

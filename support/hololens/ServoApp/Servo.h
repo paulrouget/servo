@@ -8,8 +8,7 @@
 #include "logs.h"
 #include <stdlib.h>
 
-// FIXME: move servo under winrt::
-namespace servo {
+namespace winrt::servo {
 
 namespace capi {
 extern "C" {
@@ -26,10 +25,10 @@ public:
   virtual void OnServoLoadEnded() = 0;
   virtual void OnServoHistoryChanged(bool, bool) = 0;
   virtual void OnServoShutdownComplete() = 0;
-  virtual void OnServoTitleChanged(winrt::hstring) = 0;
-  virtual void OnServoAlert(winrt::hstring) = 0;
-  virtual void OnServoURLChanged(winrt::hstring) = 0;
-  virtual bool OnServoAllowNavigation(winrt::hstring) = 0;
+  virtual void OnServoTitleChanged(hstring) = 0;
+  virtual void OnServoAlert(hstring) = 0;
+  virtual void OnServoURLChanged(hstring) = 0;
+  virtual bool OnServoAllowNavigation(hstring) = 0;
   virtual void OnServoAnimatingChanged(bool) = 0;
   virtual void Flush() = 0;
   virtual void MakeCurrent() = 0;
@@ -53,7 +52,7 @@ public:
   void Click(float x, float y) { capi::click(x, y); }
   void Reload() { capi::reload(); }
   void Stop() { capi::stop(); }
-  void LoadUri(winrt::hstring uri) {
+  void LoadUri(hstring uri) {
     const wchar_t* wc = uri.c_str();
     size_t size = uri.size() + 1;
     char* str = new char[size];
@@ -84,6 +83,6 @@ private:
 // the Servo instance. See https://github.com/servo/servo/issues/22967
 static Servo *sServo = nullptr;
 
-winrt::hstring char2hstring(const char *c_str);
+hstring char2hstring(const char *c_str);
 
 } // namespace servo
