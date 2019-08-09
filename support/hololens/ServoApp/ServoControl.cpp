@@ -32,10 +32,6 @@ void ServoControl::Shutdown() {
   }
 }
 
-// Control overrides.
-void ServoControl::OnPointerPressed(
-    Windows::UI::Xaml::Input::PointerRoutedEventArgs const & /* e */) const {};
-
 void ServoControl::OnLoaded(IInspectable const &, RoutedEventArgs const &) {
   Panel().PointerReleased(
       std::bind(&ServoControl::OnSurfaceClicked, this, _1, _2));
@@ -193,7 +189,6 @@ void ServoControl::OnServoLoadEnded() {
 }
 
 void ServoControl::OnServoHistoryChanged(bool back, bool forward) {
-  // FIXME: did this work?
   RunOnUIThread([=] { mOnHistoryChangedEvent(back, forward); });
 }
 

@@ -52,6 +52,7 @@ public:
   void Reload() { capi::reload(); }
   void Stop() { capi::stop(); }
   void Scroll(float dx, float dy, float x, float y) {
+    // FIXME: stopped working???
     capi::scroll(dx, dy, x, y);
   }
   void SetSize(GLsizei width, GLsizei height) {

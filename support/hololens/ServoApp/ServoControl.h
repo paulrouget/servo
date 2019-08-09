@@ -15,7 +15,7 @@ struct ServoControl : ServoControlT<ServoControl>, public servo::ServoDelegate {
   void Navigate(hstring url);
   void Shutdown();
 
-  void OnPointerPressed(Windows::UI::Xaml::Input::PointerRoutedEventArgs const &) const;
+  /* void OnPointerPressed(Windows::UI::Xaml::Input::PointerRoutedEventArgs const &) const; */
   void OnLoaded(IInspectable const &, Windows::UI::Xaml::RoutedEventArgs const &);
 
   winrt::event_token
