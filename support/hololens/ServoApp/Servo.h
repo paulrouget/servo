@@ -6,7 +6,9 @@
 
 #include "pch.h"
 #include "logs.h"
+#include <stdlib.h>
 
+// FIXME: move servo under winrt::
 namespace servo {
 
 namespace capi {
@@ -51,6 +53,14 @@ public:
   void Click(float x, float y) { capi::click(x, y); }
   void Reload() { capi::reload(); }
   void Stop() { capi::stop(); }
+  void LoadUri(winrt::hstring uri) {
+    const wchar_t* wc = uri.c_str();
+    size_t size = uri.size() + 1;
+    char* str = new char[size];
+    size_t converted = 0;
+    wcstombs_s(&converted, str, size, wc, uri.size());
+    capi::load_uri(str);
+  }
   void Scroll(float dx, float dy, float x, float y) {
     // FIXME: stopped working???
     capi::scroll(dx, dy, x, y);

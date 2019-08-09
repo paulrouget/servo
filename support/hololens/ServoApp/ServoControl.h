@@ -12,8 +12,8 @@ struct ServoControl : ServoControlT<ServoControl>, public servo::ServoDelegate {
   void GoForward();
   void Reload();
   void Stop();
-  void Navigate(hstring url);
   void Shutdown();
+  Windows::Foundation::Uri LoadURIOrSearch(hstring);
 
   /* void OnPointerPressed(Windows::UI::Xaml::Input::PointerRoutedEventArgs const &) const; */
   void OnLoaded(IInspectable const &, Windows::UI::Xaml::RoutedEventArgs const &);
@@ -73,6 +73,14 @@ private:
   void StartRenderLoop();
   void StopRenderLoop();
   void Loop();
+
+  std::optional<Windows::Foundation::Uri> TryParseURI(hstring input) {
+    try {
+      return Windows::Foundation::Uri(input);
+    } catch (hresult_invalid_argument const &e) {
+      return {};
+    }
+  }
 
   void
   OnSurfaceClicked(IInspectable const &,

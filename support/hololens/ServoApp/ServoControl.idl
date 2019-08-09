@@ -9,7 +9,7 @@ namespace ServoApp {
       void GoForward();
       void Reload();
       void Stop();
-      void Navigate(String url);
+      Windows.Foundation.Uri LoadURIOrSearch(String url);
       void Shutdown();
       event LoadStatusChangedDelegate OnLoadStarted;
       event LoadStatusChangedDelegate OnLoadEnded;

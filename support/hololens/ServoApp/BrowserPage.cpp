@@ -19,37 +19,32 @@ using namespace concurrency;
 using namespace servo;
 
 namespace winrt::ServoApp::implementation {
-  BrowserPage::BrowserPage() {
-    log("BrowserPage::BrowserPage()");
-    InitializeComponent();
-    
-    // FIXME: move everything to its own function
-    servoControl().OnURLChanged(
-        [=](const auto &, hstring url) { urlTextbox().Text(url); });
-    servoControl().OnTitleChanged(
-        [=](const auto &, hstring title) { });
-    servoControl().OnHistoryChanged(
-        [=](bool back, bool forward) {
-        backButton().IsEnabled(back);
-        forwardButton().IsEnabled(forward);
-        });
-    servoControl().OnLoadStarted(
-        [=] {
-        reloadButton().IsEnabled(false);
-        stopButton().IsEnabled(true);
-        });
-    servoControl().OnLoadEnded(
-        [=] {
-        reloadButton().IsEnabled(true);
-        stopButton().IsEnabled(false);
-        });
+BrowserPage::BrowserPage() {
+  log("BrowserPage::BrowserPage()");
+  InitializeComponent();
+
+  // FIXME: move everything to its own function
+  servoControl().OnURLChanged(
+      [=](const auto &, hstring url) { urlTextbox().Text(url); });
+  servoControl().OnTitleChanged([=](const auto &, hstring title) {});
+  servoControl().OnHistoryChanged([=](bool back, bool forward) {
+    backButton().IsEnabled(back);
+    forwardButton().IsEnabled(forward);
+  });
+  servoControl().OnLoadStarted([=] {
+    reloadButton().IsEnabled(false);
+    stopButton().IsEnabled(true);
+  });
+  servoControl().OnLoadEnded([=] {
+    reloadButton().IsEnabled(true);
+    stopButton().IsEnabled(false);
+  });
 }
 
 void BrowserPage::Shutdown() {
   log("BrowserPage::Shutdown()");
   servoControl().Shutdown();
 }
-
 
 /**** USER INTERACTIONS WITH UI ****/
 
@@ -74,14 +69,15 @@ void BrowserPage::OnStopButtonClicked(IInspectable const &,
   servoControl().Stop();
 }
 
-void BrowserPage::OnURLEdited(IInspectable const & sender,
-  Input::KeyRoutedEventArgs const & e) {
+void BrowserPage::OnURLEdited(IInspectable const &sender,
+                              Input::KeyRoutedEventArgs const &e) {
   if (e.Key() == Windows::System::VirtualKey::Enter) {
-    // SwapChainPanel can't be focus. Focusing the stopButton for now.
-    // We'll need to build a custom element to make the swapchain focusable.
+    servoControl().Focus(Windows::UI::Xaml::FocusState::Programmatic);
+    auto input = urlTextbox().Text();
+    auto uri = servoControl().LoadURIOrSearch(input);
+    urlTextbox().Text(uri.ToString());
   }
 }
-
 
 void BrowserPage::OnImmersiveButtonClicked(IInspectable const &,
                                            RoutedEventArgs const &) {

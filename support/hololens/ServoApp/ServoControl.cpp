@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ServoControl.h"
 #include "ServoControl.g.cpp"
+#include <stdlib.h>
 
 using namespace std::placeholders;
 using namespace winrt::Windows::UI::Xaml;
@@ -99,8 +100,21 @@ void ServoControl::Reload() {
 void ServoControl::Stop() {
   RunOnGLThread([=] { mServo->Stop(); });
 }
-void ServoControl::Navigate(hstring url) {
-  // FIXME
+Windows::Foundation::Uri ServoControl::LoadURIOrSearch(hstring input) {
+  auto uri = TryParseURI(input);
+  if (uri == std::nullopt) {
+    bool has_dot = wcsstr(input.c_str(), L".") != nullptr;
+    hstring input2 = L"https://" + input;
+    uri = TryParseURI(input2);
+    if (uri == std::nullopt || !has_dot) {
+      hstring input3 = L"https://duckduckgo.com/html/?q=" +
+        Windows::Foundation::Uri::EscapeComponent(input);
+      uri = TryParseURI(input3);
+    }
+  }
+  auto finalUri = uri.value();
+  RunOnGLThread([=] { mServo->LoadUri(finalUri.ToString()); });
+  return finalUri;
 }
 
 void ServoControl::RunOnGLThread(std::function<void()> task) {
