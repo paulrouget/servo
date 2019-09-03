@@ -1,0 +1,9 @@
+namespace Servo
+{
+    [default_interface]
+    runtimeclass Servo
+    {
+        Servo();
+        Int32 MyProperty;
+    }
+}

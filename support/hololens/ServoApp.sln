@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.28307.705
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ServoApp", "ServoApp\ServoApp.vcxproj", "{0EAB7D8B-97FD-4C92-8BB2-D5691B3D5ABD}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Servo", "Servo\Servo.vcxproj", "{906109C9-64FF-4842-9872-1E9E6EF0F86E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM = Debug|ARM
@@ -41,6 +43,20 @@ Global
 		{0EAB7D8B-97FD-4C92-8BB2-D5691B3D5ABD}.Release|x86.ActiveCfg = Release|Win32
 		{0EAB7D8B-97FD-4C92-8BB2-D5691B3D5ABD}.Release|x86.Build.0 = Release|Win32
 		{0EAB7D8B-97FD-4C92-8BB2-D5691B3D5ABD}.Release|x86.Deploy.0 = Release|Win32
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Debug|ARM.ActiveCfg = Debug|ARM
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Debug|ARM.Build.0 = Debug|ARM
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Debug|ARM64.ActiveCfg = Debug|Win32
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Debug|x64.ActiveCfg = Debug|x64
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Debug|x64.Build.0 = Debug|x64
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Debug|x86.ActiveCfg = Debug|Win32
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Debug|x86.Build.0 = Debug|Win32
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Release|ARM.ActiveCfg = Release|ARM
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Release|ARM.Build.0 = Release|ARM
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Release|ARM64.ActiveCfg = Release|Win32
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Release|x64.ActiveCfg = Release|x64
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Release|x64.Build.0 = Release|x64
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Release|x86.ActiveCfg = Release|Win32
+		{906109C9-64FF-4842-9872-1E9E6EF0F86E}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
