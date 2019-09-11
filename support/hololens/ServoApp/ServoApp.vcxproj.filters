@@ -157,6 +157,9 @@
   <ItemGroup>
     <None Include="ServoApp_TemporaryKey.pfx" />
     <None Include="packages.config" />
+    <None Include="..\..\..\target\debug\openxr_loader.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
     <None Include="..\..\..\target\debug\libcrypto.dll">
       <Filter>DebugServoDLLs</Filter>
     </None>
@@ -169,11 +172,17 @@
     <None Include="..\..\..\target\debug\simpleservo.dll">
       <Filter>DebugServoDLLs</Filter>
     </None>
+    <None Include="..\..\..\target\release\openxr_loader.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
     <None Include="..\..\..\target\release\libcrypto.dll">
       <Filter>ReleaseServoDLLs</Filter>
     </None>
     <None Include="..\..\..\target\release\libssl.dll">
       <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-pc-windows-msvc\debug\openxr_loader.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
     </None>
     <None Include="..\..\..\target\aarch64-pc-windows-msvc\debug\libcrypto.dll">
       <Filter>DebugARM64ServoDLLs</Filter>
@@ -183,6 +192,9 @@
     </None>
     <None Include="..\..\..\target\aarch64-pc-windows-msvc\debug\simpleservo.dll">
       <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-pc-windows-msvc\release\openxr_loader.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
     </None>
     <None Include="..\..\..\target\aarch64-pc-windows-msvc\release\libcrypto.dll">
       <Filter>ReleaseARM64ServoDLLs</Filter>
