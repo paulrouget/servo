@@ -95,7 +95,9 @@ private:
   winrt::event<EventDelegate> mOnCaptureGesturesEndedEvent;
 
   float mDPI = 1;
-  hstring mInitialURL = L"about:blank";
+  // hstring mInitialURL = L"http://t.bounceme.net:43186/webxr-ar.html";
+  hstring mInitialURL =
+      L"https://www.joshmatthews.net/webgl-to-webxr/webxr-ar.html";
   bool mTransient = false;
 
   Windows::UI::Xaml::Controls::SwapChainPanel ServoControl::Panel();
