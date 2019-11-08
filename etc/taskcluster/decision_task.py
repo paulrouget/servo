@@ -432,6 +432,7 @@ def windows_uwp_x64():
         windows_build_task("UWP dev build", package=False)
         .with_treeherder("Windows x64")
         .with_script(
+            "python mach test-tidy --force-cpp --no-wpt",
             "python mach build --dev --target=x86_64-uwp-windows-msvc",
             "python mach package --dev --target=x86_64-uwp-windows-msvc --uwp=x64",
         )
