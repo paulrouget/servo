@@ -336,7 +336,7 @@ class MachCommands(CommandBase):
                 manifest_dirty = False
             else:
                 manifest_dirty = run_update(self.context.topdir, check_clean=True)
-            tidy_failed = tidy.scan(not all_files, not no_progress, stylo=stylo)
+            tidy_failed = tidy.scan(not all_files, not no_progress, stylo=stylo, no_wpt=no_wpt)
             self.install_rustfmt()
             rustfmt_failed = self.call_rustup_run(["cargo", "fmt", "--", "--check"])
 
