@@ -778,9 +778,17 @@ def setup_clangfmt(env):
     cmd = "clang-format.exe" if sys.platform == "win32" else "clang-format"
     try:
         print("=== xxx ===")
-        print(env['PATH'])
-        stdout = check_output(["where", cmd], env=env).rstrip()
-        print(stdout)
+        try:
+            print(check_output(['where', cmd], env=env, verbose=True))
+        except:
+            print("where failed")
+        dirs = env["PATH"].split(";")
+        llvmdir = [d for d in dirs if d.endswith("llvm\\8.0.0\\bin")][0]
+        print("Listing dir: " + llvmdir)
+        try:
+            print(check_output(['dir', llvmdir], env=env, verbose=True))
+        except:
+            print("dir " + d + " failed")
         print("=== xxx ===")
         version = check_output([cmd, "--version"], env=env).rstrip()
         print(version)
