@@ -777,6 +777,11 @@ class MachCommands(CommandBase):
 def setup_clangfmt(env):
     cmd = "clang-format.exe" if sys.platform == "win32" else "clang-format"
     try:
+        print("=== xxx ===")
+        print(env['PATH'])
+        stdout = check_output(["where", cmd], env=env).rstrip()
+        print(stdout)
+        print("=== xxx ===")
         version = check_output([cmd, "--version"], env=env).rstrip()
         print(version)
         if not version.startswith("clang-format version {}.".format(CLANGFMT_VERSION)):
