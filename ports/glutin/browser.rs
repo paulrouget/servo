@@ -321,9 +321,10 @@ where
                             .spawn(move || {
                                 match definition {
                                     PromptDefinition::Alert(message, sender) => {
+                                        message = &tiny_dialog_escape(&message);
                                         tinyfiledialogs::message_box_ok(
                                             "Alert!",
-                                            &tiny_dialog_escape(&message),
+                                            &message,
                                             MessageBoxIcon::Warning,
                                         );
                                         sender.send(())
