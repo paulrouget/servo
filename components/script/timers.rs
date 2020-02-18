@@ -7,7 +7,6 @@ use crate::dom::bindings::cell::DomRefCell;
 use crate::dom::bindings::codegen::Bindings::FunctionBinding::Function;
 use crate::dom::bindings::reflector::DomObject;
 use crate::dom::bindings::str::DOMString;
-use crate::dom::document::FakeRequestAnimationFrameCallback;
 use crate::dom::eventsource::EventSourceTimeoutCallback;
 use crate::dom::globalscope::GlobalScope;
 use crate::dom::testbinding::TestBindingCallback;
@@ -75,7 +74,6 @@ pub enum OneshotTimerCallback {
     EventSourceTimeout(EventSourceTimeoutCallback),
     JsTimer(JsTimerTask),
     TestBindingCallback(TestBindingCallback),
-    FakeRequestAnimationFrame(FakeRequestAnimationFrameCallback),
 }
 
 impl OneshotTimerCallback {
@@ -85,7 +83,6 @@ impl OneshotTimerCallback {
             OneshotTimerCallback::EventSourceTimeout(callback) => callback.invoke(),
             OneshotTimerCallback::JsTimer(task) => task.invoke(this, js_timers),
             OneshotTimerCallback::TestBindingCallback(callback) => callback.invoke(),
-            OneshotTimerCallback::FakeRequestAnimationFrame(callback) => callback.invoke(),
         }
     }
 }
