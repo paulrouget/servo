@@ -342,7 +342,22 @@ void ServoControl::Loop() {
     }
     mTasks.clear();
     LeaveCriticalSection(&mGLLock);
-    mServo->PerformUpdates();
+	auto start_time = std::chrono::high_resolution_clock::now();
+    auto did_swap_buffers = mServo->PerformUpdates();
+	auto end_time = std::chrono::high_resolution_clock::now();
+	auto time = end_time - start_time;
+	log("PerformUpdates time: %ims", time / std::chrono::milliseconds(1));
+
+    if (mAnimating && !did_swap_buffers) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+		log("sleep. bad.");
+    }
+	if (!mAnimating && !did_swap_buffers) {
+		log("no sleep, but no swap_buffers");
+	}
+    if (mAnimating && did_swap_buffers) {
+	  log("no sleep. good.");
+	}
   }
   mServo->DeInit();
 }

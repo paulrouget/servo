@@ -1490,6 +1490,8 @@ impl ScriptThread {
                     if !animation_ticks.contains(&pipeline_id) {
                         animation_ticks.insert(pipeline_id);
                         sequential.push(event);
+                    } else {
+                        println!("script: Got multiple TickAllAnimations");
                     }
                 },
                 FromConstellation(ConstellationControlMsg::SendEvent(_, MouseMoveEvent(..))) => {

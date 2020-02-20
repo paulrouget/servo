@@ -767,7 +767,8 @@ where
         ::std::mem::replace(&mut self.embedder_events, Vec::new())
     }
 
-    pub fn handle_events(&mut self, events: Vec<WindowEvent>) {
+    pub fn handle_events(&mut self, events: Vec<WindowEvent>) -> bool {
+        let mut did_swap_buffer = false;
         if self.compositor.receive_messages() {
             self.receive_messages();
         }
@@ -775,10 +776,11 @@ where
             self.handle_window_event(event);
         }
         if self.compositor.shutdown_state != ShutdownState::FinishedShuttingDown {
-            self.compositor.perform_updates();
+            did_swap_buffer = self.compositor.perform_updates();
         } else {
             self.embedder_events.push((None, EmbedderMsg::Shutdown));
         }
+        did_swap_buffer
     }
 
     pub fn repaint_synchronously(&mut self) {

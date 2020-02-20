@@ -499,11 +499,11 @@ pub extern "C" fn resize(width: i32, height: i32) {
 }
 
 #[no_mangle]
-pub extern "C" fn perform_updates() {
+pub extern "C" fn perform_updates() -> bool {
     catch_any_panic(|| {
         debug!("perform_updates");
-        call(|s| s.perform_updates());
-    });
+        call(|s| s.perform_updates())
+    })
 }
 
 #[no_mangle]

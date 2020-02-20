@@ -32,7 +32,7 @@ public:
   typedef capi::CMediaSessionActionType MediaSessionActionType;
   typedef capi::CMediaSessionPlaybackState MediaSessionPlaybackState;
 
-  void PerformUpdates() { capi::perform_updates(); }
+  bool PerformUpdates() { return capi::perform_updates(); }
   void DeInit() { capi::deinit(); }
   void RequestShutdown() { capi::request_shutdown(); }
   void SetBatchMode(bool mode) { capi::set_batch_mode(mode); }

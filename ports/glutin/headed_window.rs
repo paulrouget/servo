@@ -654,6 +654,7 @@ impl WindowMethods for Window {
     }
 
     fn present(&self) {
+        println!("gl::swap_buffers");
         self.gl_context.borrow().swap_buffers();
         self.gl_context.borrow_mut().make_not_current();
     }

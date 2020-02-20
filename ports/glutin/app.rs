@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::env;
 use std::mem;
 use std::rc::Rc;
+use time::precise_time_ns;
 
 thread_local! {
     pub static WINDOWS: RefCell<HashMap<WindowId, Rc<dyn WindowPortsMethods>>> = RefCell::new(HashMap::new());
@@ -31,6 +32,7 @@ pub struct App {
     browser: RefCell<Browser<dyn WindowPortsMethods>>,
     event_queue: RefCell<Vec<WindowEvent>>,
     suspended: Cell<bool>,
+    last_composite: Cell<u64>,
 }
 
 impl App {
@@ -83,6 +85,7 @@ impl App {
             browser: RefCell::new(browser),
             servo: RefCell::new(servo),
             suspended: Cell::new(false),
+            last_composite: Cell::new(0),
         };
 
         app.run_loop();
@@ -183,9 +186,11 @@ impl App {
         // will send a key event to the servo window.
 
         let mut app_events = self.get_events();
+        let mut is_animating = false;
         WINDOWS.with(|windows| {
             for (_win_id, window) in &*windows.borrow() {
                 app_events.extend(window.get_events());
+                is_animating = is_animating || window.is_animating();
             }
         });
 
@@ -201,10 +206,33 @@ impl App {
         let mut servo_events = servo.get_events();
         loop {
             browser.handle_servo_events(servo_events);
-            servo.handle_events(browser.get_events());
+
+            println!("------{{");
+            let t1 = precise_time_ns();
+            println!("How much time since last call: {}ms", (t1 - self.last_composite.get()) as f32 / 1_000_000.);
+            let did_swap_buffer = servo.handle_events(browser.get_events());
+            let delta = (precise_time_ns() - t1) as f32 / 1_000_000.;
+            println!("handle_events took {}ms", delta);
+            println!("did_swap_buffer: {}", if did_swap_buffer { "yes" } else { "no" });
             if browser.shutdown_requested() {
                 return true;
             }
+            if !did_swap_buffer /* && is_animating */ {
+                let now = precise_time_ns();
+                let frame_duration = now - self.last_composite.get();
+                let frame_min_duration = 1_000_000_000 / 60;
+                if frame_min_duration > frame_duration {
+                    let sleep_time = frame_min_duration - frame_duration;
+                    std::thread::sleep(std::time::Duration::from_nanos(sleep_time));
+                    println!("Sleeping for {}ms", (sleep_time as f32 / 1_000_000.) as u32);
+                }
+            } else {
+                println!("no sleeping");
+                // self.last_composite.set(precise_time_ns());
+            }
+            self.last_composite.set(precise_time_ns());
+            println!("}}------");
+
             servo_events = servo.get_events();
             if servo_events.is_empty() {
                 break;

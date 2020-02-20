@@ -137,9 +137,6 @@ pub struct IOCompositor<Window: WindowMethods + ?Sized> {
     /// the compositor.
     pub shutdown_state: ShutdownState,
 
-    /// Tracks the last composite time.
-    last_composite_time: u64,
-
     /// Tracks whether the zoom action has happened recently.
     zoom_action: bool,
 
@@ -308,7 +305,6 @@ impl<Window: WindowMethods + ?Sized> IOCompositor<Window> {
             frame_tree_id: FrameTreeId(0),
             constellation_chan: state.constellation_chan,
             time_profiler_chan: state.time_profiler_chan,
-            last_composite_time: 0,
             ready_to_save_state: ReadyState::Unknown,
             webrender: state.webrender,
             webrender_document: state.webrender_document,
@@ -580,9 +576,10 @@ impl<Window: WindowMethods + ?Sized> IOCompositor<Window> {
                 let visible = self.pipeline_details(pipeline_id).visible;
                 self.pipeline_details(pipeline_id)
                     .animation_callbacks_running = true;
-                if visible {
-                    self.tick_animations_for_pipeline(pipeline_id);
-                }
+                // FIXME: is that necessary
+                // if visible {
+                //     self.tick_animations_for_pipeline(pipeline_id);
+                // }
             },
             AnimationState::NoAnimationsPresent => {
                 self.pipeline_details(pipeline_id).animations_running = false;
@@ -1039,6 +1036,8 @@ impl<Window: WindowMethods + ?Sized> IOCompositor<Window> {
             }
         }
 
+        println!("comp");
+
         // We may need to tick animations in layout. (See #12749.)
         let animations_running = self.pipeline_details(pipeline_id).animations_running;
         if animations_running {
@@ -1210,7 +1209,7 @@ impl<Window: WindowMethods + ?Sized> IOCompositor<Window> {
         }
     }
 
-    pub fn composite(&mut self) {
+    pub fn composite(&mut self) -> bool {
         let target = self.composite_target;
         match self.composite_specific_target(target, None) {
             Ok(_) => {
@@ -1218,6 +1217,7 @@ impl<Window: WindowMethods + ?Sized> IOCompositor<Window> {
                     println!("Shutting down the Constellation after generating an output file or exit flag specified");
                     self.start_shutting_down();
                 }
+                return true;
             },
             Err(e) => {
                 if self.is_running_problem_test {
@@ -1227,6 +1227,7 @@ impl<Window: WindowMethods + ?Sized> IOCompositor<Window> {
                         println!("not ready to composite: {:?}", e);
                     }
                 }
+                return false;
             },
         }
     }
@@ -1406,8 +1407,6 @@ impl<Window: WindowMethods + ?Sized> IOCompositor<Window> {
         // Perform the page flip. This will likely block for a while.
         self.window.present();
 
-        self.last_composite_time = precise_time_ns();
-
         self.composition_request = CompositionRequest::NoCompositingNecessary;
 
         self.process_animations();
@@ -1487,10 +1486,10 @@ impl<Window: WindowMethods + ?Sized> IOCompositor<Window> {
             self.zoom_action = false;
         }
 
-        match self.composition_request {
-            CompositionRequest::NoCompositingNecessary => {},
+        let did_swap_buffer = match self.composition_request {
+            CompositionRequest::NoCompositingNecessary => false,
             CompositionRequest::CompositeNow(_) => self.composite(),
-        }
+        };
 
         // Send every VR display that wants one a main-thread heartbeat
         for webvr_heartbeat in &mut self.webvr_heartbeats {
@@ -1501,9 +1500,10 @@ impl<Window: WindowMethods + ?Sized> IOCompositor<Window> {
         self.webxr_main_thread.run_one_frame();
 
         if !self.pending_scroll_zoom_events.is_empty() && !self.waiting_for_results_of_scroll {
-            self.process_pending_scroll_events()
+            self.process_pending_scroll_events();
         }
-        self.shutdown_state != ShutdownState::FinishedShuttingDown
+
+        did_swap_buffer
     }
 
     /// Repaints and recomposites synchronously. You must be careful when calling this, as if a
