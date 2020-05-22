@@ -4,8 +4,10 @@
 
 #pragma once
 
+#include <winrt/ServoComponent.h>
+
 #include "BrowserPage.g.h"
-#include "ServoControl\ServoControl.h"
+/* #include <Servo.h> */
 
 namespace winrt::ServoApp::implementation {
 
@@ -45,8 +47,8 @@ public:
 
 private:
   void BindServoEvents();
-  DevtoolsStatus mDevtoolsStatus = DevtoolsStatus::Stopped;
-  unsigned int mDevtoolsPort = 0;
+  /* DevtoolsStatus mDevtoolsStatus = DevtoolsStatus::Stopped; */
+  /* unsigned int mDevtoolsPort = 0; */
 };
 } // namespace winrt::ServoApp::implementation
 

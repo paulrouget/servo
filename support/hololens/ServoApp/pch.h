@@ -19,14 +19,6 @@
 #include <WindowsNumerics.h>
 #include <wrl/client.h>
 
-#define GL_GLEXT_PROTOTYPES
-#include <angle_windowsstore.h>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
-#include <EGL/eglplatform.h>
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-
 #include <winrt/Windows.ApplicationModel.Activation.h>
 #include <winrt/Windows.ApplicationModel.Core.h>
 #include <winrt/Windows.Foundation.Collections.h>

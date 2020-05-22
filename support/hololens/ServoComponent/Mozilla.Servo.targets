@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <servo-DeviceType Condition="'$(TargetPlatformIdentifier)' == 'UAP'">UAP</servo-DeviceType>
+    <servo-LibPath>$(MSBuildThisFileDirectory)..\..\lib\$(servo-DeviceType)\$(Platform)</servo-LibPath>
+  </PropertyGroup>
+
+  <Target Name="servo-win81-check" BeforeTargets="ResolveAssemblyReferences">
+    <Error
+      Condition="'$(servo-DeviceType)' != 'UAP'"
+      Text="Target must be Windows 10 UWP. Note that this servo NuGet package doesn't contain binaries for Windows 8.1 or Windows
+      Phone 8.1. For 8.1 please use the 'servo.WindowsStore.win81' NuGet package." />
+  </Target>
+
+  <ItemDefinitionGroup>
+    <Link>
+      <AdditionalLibraryDirectories>$(servo-LibPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libGLESv2.lib;libEGL.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\..\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+</Project>

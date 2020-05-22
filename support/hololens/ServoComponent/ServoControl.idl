@@ -1,9 +1,37 @@
-namespace ServoComponent
-{
-    [default_interface]
-    runtimeclass ServoControl
-    {
-        ServoControl();
-        Int32 MyProperty;
-    }
+namespace ServoComponent {
+
+  delegate void EventDelegate();
+  delegate void HistoryChangedDelegate(Boolean back, Boolean forward);
+  delegate void MediaSessionMetadataDelegate(String title, String artist, String album);
+  delegate void DevtoolsStatusChangedDelegate(DevtoolsStatus status, UInt32 port);
+
+  enum DevtoolsStatus {
+    Running = 0,
+    Stopped,
+    Failed,
+  };
+
+  runtimeclass ServoControl : Windows.UI.Xaml.Controls.Control {
+      ServoControl();
+      void GoBack();
+      void GoForward();
+      void Reload();
+      void Stop();
+      String LoadURIOrSearch(String url);
+      void SetTransientMode(Boolean transient);
+      void SetArgs(String args);
+      void Shutdown();
+      void ChangeVisibility(Boolean visible);
+      void SendMediaSessionAction(UInt32 action);
+      event EventDelegate OnLoadStarted;
+      event EventDelegate OnLoadEnded;
+      event EventDelegate OnCaptureGesturesStarted;
+      event EventDelegate OnCaptureGesturesEnded;
+      event DevtoolsStatusChangedDelegate OnDevtoolsStatusChanged;
+      event HistoryChangedDelegate OnHistoryChanged;
+      event Windows.Foundation.EventHandler<String> OnTitleChanged;
+      event Windows.Foundation.EventHandler<String> OnURLChanged;
+      event MediaSessionMetadataDelegate OnMediaSessionMetadata;
+      event Windows.Foundation.EventHandler<int> OnMediaSessionPlaybackStateChange;
 }
+} // namespace ServoComponent

@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "pch.h"
-#include "logs.h"
 #include <stdlib.h>
 
 namespace winrt::servo {
@@ -27,6 +25,7 @@ public:
   ~Servo();
   ServoDelegate &Delegate() { return mDelegate; }
 
+  // PUBLIC
   typedef capi::CMouseButton MouseButton;
   typedef capi::CPromptResult PromptResult;
   typedef capi::CContextMenuResult ContextMenuResult;

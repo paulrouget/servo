@@ -8,18 +8,739 @@
     <Filter Include="Generated Files">
       <UniqueIdentifier>{926ab91d-31b4-48c3-b9a4-e681349f27f0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="DebugARM64ServoDLLs">
+      <UniqueIdentifier>{af6f15e2-7536-4be7-9abb-447b845b1f59}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="DebugServoDLLs">
+      <UniqueIdentifier>{9444c95f-dcd7-4314-8c1b-2c5f2fa5a4c0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReleaseARM64ServoDLLs">
+      <UniqueIdentifier>{350eea44-8e0d-47df-b536-49973e8f78f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReleaseServoDLLs">
+      <UniqueIdentifier>{12bcc4fd-ccf2-476a-871a-6ebaf2416ed3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="Class.cpp" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
+    <ClCompile Include="Servo.cpp" />
+    <ClCompile Include="OpenGLES.cpp" />
+    <ClCompile Include="logs.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Servo.h" />
+    <ClInclude Include="OpenGLES.h" />
+    <ClInclude Include="logs.h" />
+    <ClInclude Include="DefaultUrl.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ServoComponent.def" />
     <None Include="packages.config" />
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\avcodec-58.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\avfilter-7.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\avformat-58.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\avresample-4.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\avutil-56.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\bz2.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\ffi-7.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gio-2.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\glib-2.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gmodule-2.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gobject-2.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstapp-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstapp.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstaudio-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstaudioconvert.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstaudiofx.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstaudioparsers.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstaudioresample.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstautodetect.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstbase-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstcodecparsers-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstcontroller-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstcoreelements.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstdeinterlace.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstfft-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstgl-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstinterleave.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstisomp4.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstlibav.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstpbutils-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstplayback.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstplayer-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstproxy.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstreamer-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstriff-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstrtp-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstrtsp-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstsdp-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gsttag-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gsttypefindfunctions.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstvideo-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstvideoconvert.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstvideofilter.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstvideoparsersbad.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstvideoscale.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstvolume.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstwasapi.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\gstwebrtc-1.0-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\intl-8.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\libcrypto.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\libssl.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\orc-0.4-0.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\postproc-55.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\simpleservo.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\swresample-3.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\swscale-5.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\x264-157.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\debug\z-1.dll">
+      <Filter>DebugARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\avcodec-58.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\avfilter-7.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\avformat-58.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\avresample-4.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\avutil-56.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\bz2.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\ffi-7.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gio-2.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\glib-2.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gmodule-2.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gobject-2.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstapp-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstapp.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstaudio-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstaudioconvert.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstaudiofx.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstaudioparsers.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstaudioresample.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstautodetect.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstbase-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstcodecparsers-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstcontroller-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstcoreelements.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstdeinterlace.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstfft-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstgl-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstinterleave.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstisomp4.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstlibav.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstpbutils-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstplayback.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstplayer-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstproxy.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstreamer-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstriff-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstrtp-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstrtsp-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstsdp-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gsttag-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gsttypefindfunctions.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstvideo-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstvideoconvert.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstvideofilter.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstvideoparsersbad.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstvideoscale.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstvolume.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstwasapi.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\gstwebrtc-1.0-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\intl-8.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\libssl.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\orc-0.4-0.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\postproc-55.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\simpleservo.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\libcrypto.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\swresample-3.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\swscale-5.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\x264-157.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\debug\z-1.dll">
+      <Filter>DebugServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\avcodec-58.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\avfilter-7.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\avformat-58.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\avresample-4.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\avutil-56.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\bz2.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\ffi-7.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gio-2.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\glib-2.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gmodule-2.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gobject-2.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstapp-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstapp.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstaudio-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstaudioconvert.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstaudiofx.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstaudioparsers.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstaudioresample.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstautodetect.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstbase-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstcodecparsers-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstcontroller-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstcoreelements.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstdeinterlace.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstfft-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstgl-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstinterleave.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstisomp4.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstlibav.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstpbutils-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstplayback.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstplayer-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstproxy.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstreamer-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstriff-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstrtp-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstrtsp-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstsdp-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gsttag-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gsttypefindfunctions.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstvideo-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstvideoconvert.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstvideofilter.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstvideoparsersbad.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstvideoscale.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstvolume.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstwasapi.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\gstwebrtc-1.0-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\intl-8.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\libcrypto.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\libssl.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\orc-0.4-0.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\postproc-55.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\simpleservo.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\swresample-3.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\swscale-5.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\x264-157.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\aarch64-uwp-windows-msvc\release\z-1.dll">
+      <Filter>ReleaseARM64ServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\avcodec-58.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\avfilter-7.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\avformat-58.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\avresample-4.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\avutil-56.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\bz2.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\ffi-7.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gio-2.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\glib-2.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gmodule-2.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gobject-2.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstapp-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstapp.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstaudio-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstaudioconvert.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstaudiofx.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstaudioparsers.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstaudioresample.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstautodetect.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstbase-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstcodecparsers-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstcontroller-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstcoreelements.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstdeinterlace.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstfft-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstgl-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstinterleave.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstisomp4.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstlibav.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstpbutils-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstplayback.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstplayer-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstproxy.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstreamer-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstriff-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstrtp-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstrtsp-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstsdp-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gsttag-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gsttypefindfunctions.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstvideo-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstvideoconvert.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstvideofilter.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstvideoparsersbad.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstvideoscale.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstvolume.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstwasapi.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\gstwebrtc-1.0-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\intl-8.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\libcrypto.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\libssl.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\msvcp140.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\orc-0.4-0.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\postproc-55.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\simpleservo.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\swresample-3.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\swscale-5.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\vcruntime140.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\x264-157.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="..\..\..\target\x86_64-uwp-windows-msvc\release\z-1.dll">
+      <Filter>ReleaseServoDLLs</Filter>
+    </None>
+    <None Include="$(OpenXRLoaderBinaryRoot)\bin\openxr_loader.dll" />
   </ItemGroup>
   <ItemGroup>
     <None Include="PropertySheet.props" />
@@ -29,5 +750,8 @@
   </ItemGroup>
   <ItemGroup>
     <Midl Include="ServoControl.idl" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="Themes\Generic.xaml" />
   </ItemGroup>
 </Project>

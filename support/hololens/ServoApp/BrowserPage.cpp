@@ -3,10 +3,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "pch.h"
-#include "logs.h"
 #include "BrowserPage.h"
 #include "BrowserPage.g.cpp"
-#include "DefaultUrl.h"
 
 using namespace std::placeholders;
 using namespace winrt::Windows::Foundation;
@@ -59,25 +57,25 @@ void BrowserPage::BindServoEvents() {
       [=](hstring title, hstring artist, hstring album) {});
   servoControl().OnMediaSessionPlaybackStateChange(
       [=](const auto &, int state) {
-        if (state == servo::Servo::MediaSessionPlaybackState::None) {
-          mediaControls().Visibility(Visibility::Collapsed);
-          return;
-        }
-        mediaControls().Visibility(Visibility::Visible);
-        playButton().Visibility(
-            state == servo::Servo::MediaSessionPlaybackState::Paused
-                ? Visibility::Visible
-                : Visibility::Collapsed);
-        pauseButton().Visibility(
-            state == servo::Servo::MediaSessionPlaybackState::Paused
-                ? Visibility::Collapsed
-                : Visibility::Visible);
+        /* if (state == servo::Servo::MediaSessionPlaybackState::None) { */
+        /*   mediaControls().Visibility(Visibility::Collapsed); */
+        /*   return; */
+        /* } */
+        /* mediaControls().Visibility(Visibility::Visible); */
+        /* playButton().Visibility( */
+        /*     state == servo::Servo::MediaSessionPlaybackState::Paused */
+        /*         ? Visibility::Visible */
+        /*         : Visibility::Collapsed); */
+        /* pauseButton().Visibility( */
+        /*     state == servo::Servo::MediaSessionPlaybackState::Paused */
+        /*         ? Visibility::Collapsed */
+        /*         : Visibility::Visible); */
       });
-  servoControl().OnDevtoolsStatusChanged(
-      [=](DevtoolsStatus status, unsigned int port) {
-        mDevtoolsStatus = status;
-        mDevtoolsPort = port;
-      });
+  /* servoControl().OnDevtoolsStatusChanged( */
+  /*     [=](DevtoolsStatus status, unsigned int port) { */
+  /*       mDevtoolsStatus = status; */
+  /*       mDevtoolsPort = port; */
+  /*     }); */
   Window::Current().VisibilityChanged(
       [=](const auto &, const VisibilityChangedEventArgs &args) {
         servoControl().ChangeVisibility(args.Visible());
@@ -98,7 +96,7 @@ void BrowserPage::LoadServoURI(Uri uri) {
   auto scheme = uri.SchemeName();
 
   if (scheme != SERVO_SCHEME) {
-    log("Unexpected URL: ", uri.RawUri().c_str());
+    // log("Unexpected URL: ", uri.RawUri().c_str());
     return;
   }
   std::wstring raw{uri.RawUri()};
@@ -114,7 +112,9 @@ void BrowserPage::SetTransientMode(bool transient) {
                                                    : Visibility::Collapsed);
 }
 
-void BrowserPage::SetArgs(hstring args) { servoControl().SetArgs(args); }
+void BrowserPage::SetArgs(hstring args) {
+  servoControl().SetArgs(args);
+}
 
 void BrowserPage::Shutdown() {
   ToastNotificationManager::History().Clear();
@@ -145,7 +145,7 @@ void BrowserPage::OnStopButtonClicked(IInspectable const &,
 
 void BrowserPage::OnHomeButtonClicked(IInspectable const &,
                                       RoutedEventArgs const &) {
-  servoControl().LoadURIOrSearch(DEFAULT_URL);
+  servoControl().LoadURIOrSearch(/* FIXME DEFAULT_URL */ L"https://example.com");
 }
 
 void BrowserPage::OnDevtoolsButtonClicked(IInspectable const &,
@@ -154,17 +154,17 @@ void BrowserPage::OnDevtoolsButtonClicked(IInspectable const &,
   auto toastXml = ToastNotificationManager::GetTemplateContent(toastTemplate);
   auto toastTextElements = toastXml.GetElementsByTagName(L"text");
   std::wstring message;
-  if (mDevtoolsStatus == DevtoolsStatus::Stopped) {
-    message = L"Devtools server hasn't started";
-  } else if (mDevtoolsStatus == DevtoolsStatus::Running) {
-    message = L"DevTools server has started on port " +
-              std::to_wstring(mDevtoolsPort);
-  } else if (mDevtoolsStatus == DevtoolsStatus::Failed) {
-    message = L"Error: could not start DevTools";
-  }
-  toastTextElements.Item(0).InnerText(message);
-  auto toast = ToastNotification(toastXml);
-  ToastNotificationManager::CreateToastNotifier().Show(toast);
+  /* if (mDevtoolsStatus == DevtoolsStatus::Stopped) { */
+  /*   message = L"Devtools server hasn't started"; */
+  /* } else if (mDevtoolsStatus == DevtoolsStatus::Running) { */
+  /*   message = L"DevTools server has started on port " + */
+  /*             std::to_wstring(mDevtoolsPort); */
+  /* } else if (mDevtoolsStatus == DevtoolsStatus::Failed) { */
+  /*   message = L"Error: could not start DevTools"; */
+  /* } */
+  /* toastTextElements.Item(0).InnerText(message); */
+  /* auto toast = ToastNotification(toastXml); */
+  /* ToastNotificationManager::CreateToastNotifier().Show(toast); */
 }
 
 void BrowserPage::OnURLEdited(IInspectable const &,
@@ -180,14 +180,14 @@ void BrowserPage::OnURLEdited(IInspectable const &,
 void BrowserPage::OnMediaControlsPlayClicked(
     Windows::Foundation::IInspectable const &,
     Windows::UI::Xaml::RoutedEventArgs const &) {
-  servoControl().SendMediaSessionAction(
-      static_cast<int32_t>(servo::Servo::MediaSessionActionType::Play));
+  /* servoControl().SendMediaSessionAction( */
+  /*     static_cast<int32_t>(servo::Servo::MediaSessionActionType::Play)); */
 }
 void BrowserPage::OnMediaControlsPauseClicked(
     Windows::Foundation::IInspectable const &,
     Windows::UI::Xaml::RoutedEventArgs const &) {
-  servoControl().SendMediaSessionAction(
-      static_cast<int32_t>(servo::Servo::MediaSessionActionType::Pause));
+  /* servoControl().SendMediaSessionAction( */
+  /*     static_cast<int32_t>(servo::Servo::MediaSessionActionType::Pause)); */
 }
 
 } // namespace winrt::ServoApp::implementation

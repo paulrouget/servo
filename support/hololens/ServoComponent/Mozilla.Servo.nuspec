@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>Mozilla.Servo</id>
+    <license type="expression">MPL-2.0</license>
+    <version>1.0.0</version>
+    <title>Servo</title>
+    <authors>The Servo Project Developers</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectUrl>https://servo.org/</projectUrl>
+    <description>Servo Web Engine, with WebXR support</description>
+    <copyright>Copyright Servo Team 2020</copyright>
+    <tags>servo webxr</tags>
+    <dependencies>
+      <group targetFramework="uap">
+        <dependency id="ANGLE.WindowsStore.Servo" version="2.1.16"/>
+        <dependency id="Microsoft.Windows.CppWinRT" version="2.0.200316.3"/>
+        <dependency id="OpenXR.Loader" version="1.0.3"/>
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <!-- FIXME: is this necessary? -->
+    <file src="Themes\Generic.xaml" target="Themes"/>
+    <file src="Mozilla.Servo.targets" target="build"/>
+
+    <file src="ServoControl.h" target="include"/>
+    <file src="OpenGLES.h" target="include"/>
+    <file src="Servo.h" target="include"/>
+    <file src="Generated Files\ServoControl.g.h" target="include"/>
+
+    <file src="..\x64\Release\ServoComponent\ServoComponent.winmd" target="lib\UAP\x64"/>
+    <file src="..\x64\Release\ServoComponent\*.dll" target="lib\UAP\x64"/>
+    <file src="..\..\..\target\x86_64-uwp-windows-msvc\release\simpleservo.h" target="include"/>
+
+    <!-- <file src="..\ARM64\Release\ServoComponent\ServoComponent.winmd" target="lib\ARM64"/> -->
+    <!-- <file src="..\ARM64\Release\ServoComponent\*.dll" target="lib\ARM64"/> -->
+
+  </files>
+</package>
+
