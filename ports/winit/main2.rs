@@ -135,7 +135,7 @@ pub fn main() {
         },
     };
 
-    register_user_perfs(&opts_matches);
+    register_user_prefs(&opts_matches);
 
     // TODO: once log-panics is released, can this be replaced by
     // log_panics::init()?
@@ -198,7 +198,7 @@ pub fn main() {
     platform::deinit(clean_shutdown)
 }
 
-fn register_user_perfs(opts_matches: &Matches) {
+fn register_user_prefs(opts_matches: &Matches) {
     // Read user's prefs.json and then parse --pref command line args.
 
     let user_prefs_path = opts::get()

@@ -275,13 +275,19 @@ hstring ServoControl::LoadURIOrSearch(hstring input) {
     return with_scheme;
   }
 
-  // FIXME
   // Doesn't look like a URI. Let's search for the string.
-  /* hstring template = std::get<1>(Servo::GetPref("shell.searchpage")); */
-  /* hstring searchUri = */
-  /*     L"https://duckduckgo.com/html/?q=" + Uri::EscapeComponent(input); */
-  TryLoadUri(searchUri);
-  return searchUri;
+  auto escapedInput = Uri::EscapeComponent(input);
+  std::wstring searchUri = 
+      unbox_value<hstring>(std::get<1>(Servo::GetPref(L"shell.searchpage"))).c_str();
+  std::wstring keyword = L"%s";
+  size_t start_pos = searchUri.find(keyword);
+  if (start_pos == std::string::npos)
+    searchUri = searchUri + escapedInput;
+  else
+    searchUri.replace(start_pos, keyword.length(), escapedInput);
+  hstring finalUri {searchUri};
+  TryLoadUri(finalUri);
+  return finalUri;
 }
 
 void ServoControl::SendMediaSessionAction(int32_t action) {

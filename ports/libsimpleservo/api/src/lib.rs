@@ -7,7 +7,7 @@ extern crate log;
 
 pub mod gl_glue;
 
-pub use servo::config::prefs::PrefValue;
+pub use servo::config::prefs::{add_user_prefs, PrefValue};
 pub use servo::embedder_traits::{
     ContextMenuResult, MediaSessionPlaybackState, PermissionPrompt, PermissionRequest, PromptResult,
 };
@@ -233,14 +233,17 @@ pub fn init(
             gfx.subpixel_text_antialiasing.enabled,
             init_opts.enable_subpixel_text_antialiasing
         );
-        opts::from_cmdline_args(Options::new(), &args, init_opts.prefs);
+        opts::from_cmdline_args(Options::new(), &args);
     }
 
-    let cmdline_url = opts::get().url.clone();
+    if let Some(prefs) = init_opts.prefs {
+        add_user_prefs(prefs);
+    }
+
     let pref_url = ServoUrl::parse(&pref!(shell.homepage)).ok();
     let blank_url = ServoUrl::parse("about:blank").ok();
 
-    let url = cmdline_url.or(pref_url).or(blank_url).unwrap();
+    let url = pref_url.or(blank_url).unwrap();
 
     gl.clear_color(1.0, 1.0, 1.0, 1.0);
     gl.clear(gl::COLOR_BUFFER_BIT);
