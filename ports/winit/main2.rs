@@ -22,12 +22,15 @@ mod resources;
 mod window_trait;
 
 use app::App;
-use getopts::Options;
+use getopts::{Matches, Options};
 use servo::config::opts::{self, ArgumentParsingResult};
+use servo::config::prefs::{self, PrefValue};
 use servo::config::servo_version;
-use servo::servo_config::pref;
+use servo::servo_config::{basedir, pref};
+use std::collections::HashMap;
 use std::env;
-use std::io::Write;
+use std::fs::File;
+use std::io::{Read, Write};
 use std::panic;
 use std::process;
 use std::thread;
@@ -102,9 +105,22 @@ pub fn main() {
         "Set custom user agent string (or ios / android / desktop for platform default)",
         "NCSA Mosaic/1.0 (X11;SunOS 4.1.4 sun4m)",
     );
+    opts.optmulti(
+        "",
+        "pref",
+        "A preference to set to enable",
+        "dom.bluetooth.enabled",
+    );
+    opts.optmulti(
+        "",
+        "pref",
+        "A preference to set to disable",
+        "dom.webgpu.enabled=false",
+    );
 
     let opts_matches;
     let content_process_token;
+
     match opts::from_cmdline_args(opts, &args) {
         ArgumentParsingResult::ContentProcess(matches, token) => {
             opts_matches = matches;
@@ -118,6 +134,8 @@ pub fn main() {
             content_process_token = None;
         },
     };
+
+    register_user_perfs(&opts_matches);
 
     // TODO: once log-panics is released, can this be replaced by
     // log_panics::init()?
@@ -178,4 +196,48 @@ pub fn main() {
     App::run(do_not_use_native_titlebar, device_pixels_per_px, user_agent);
 
     platform::deinit(clean_shutdown)
+}
+
+fn register_user_perfs(opts_matches: &Matches) {
+    // Read user's prefs.json and then parse --pref command line args.
+
+    let user_prefs_path = opts::get()
+        .config_dir
+        .clone()
+        .or_else(|| basedir::default_config_dir())
+        .map(|path| path.join("prefs.json"))
+        .filter(|path| path.exists());
+
+    let mut userprefs = if let Some(path) = user_prefs_path {
+        let mut file = File::open(&path).expect("Error opening user prefs");
+        let mut txt = String::new();
+        file.read_to_string(&mut txt).expect("Can't read user prefs file");
+        prefs::read_prefs_map(&txt).expect("Can't parse user prefs file")
+    } else {
+        HashMap::new()
+    };
+
+    let argprefs: HashMap<String, PrefValue> = opts_matches.opt_strs("pref").iter().map(|pref| {
+        let split: Vec<&str> = pref.splitn(2, '=').collect();
+        let pref_name = split[0];
+        let pref_value = match split.get(1).cloned() {
+            Some("true") | None => PrefValue::Bool(true),
+            Some("false") => PrefValue::Bool(false),
+            Some(string) => {
+                if let Some(int) = string.parse::<i64>().ok() {
+                    PrefValue::Int(int)
+                } else if let Some(float) = string.parse::<f64>().ok() {
+                    PrefValue::Float(float)
+                } else {
+                    PrefValue::from(string)
+                }
+            },
+        };
+        (pref_name.to_string(), pref_value)
+    }).collect();
+
+    // --pref overrides user prefs.json
+    userprefs.extend(argprefs);
+
+    prefs::add_user_prefs(userprefs);
 }

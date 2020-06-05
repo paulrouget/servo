@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ServoControl.h"
 #include "ServoControl.g.cpp"
+#include "Pref.g.cpp"
 #include <stdlib.h>
 
 using namespace std::placeholders;
@@ -274,9 +275,11 @@ hstring ServoControl::LoadURIOrSearch(hstring input) {
     return with_scheme;
   }
 
+  // FIXME
   // Doesn't look like a URI. Let's search for the string.
-  hstring searchUri =
-      L"https://duckduckgo.com/html/?q=" + Uri::EscapeComponent(input);
+  /* hstring template = std::get<1>(Servo::GetPref("shell.searchpage")); */
+  /* hstring searchUri = */
+  /*     L"https://duckduckgo.com/html/?q=" + Uri::EscapeComponent(input); */
   TryLoadUri(searchUri);
   return searchUri;
 }
@@ -578,6 +581,15 @@ void ServoControl::OnServoShowContextMenu(std::optional<hstring> title,
 
 template <typename Callable> void ServoControl::RunOnUIThread(Callable cb) {
   Dispatcher().RunAsync(CoreDispatcherPriority::High, cb);
+}
+
+Collections::IVector<ServoApp::Pref> ServoControl::Preferences() {
+  std::vector<ServoApp::Pref> prefs;
+  for (auto [key, val, isDefault] : Servo::GetPrefs()) {
+    prefs.push_back(ServoApp::Pref(key, val, isDefault));
+  }
+  return winrt::single_threaded_observable_vector<ServoApp::Pref>(
+      std::move(prefs));
 }
 
 } // namespace winrt::ServoApp::implementation
