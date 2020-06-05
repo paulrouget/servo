@@ -277,15 +277,16 @@ hstring ServoControl::LoadURIOrSearch(hstring input) {
 
   // Doesn't look like a URI. Let's search for the string.
   auto escapedInput = Uri::EscapeComponent(input);
-  std::wstring searchUri = 
-      unbox_value<hstring>(std::get<1>(Servo::GetPref(L"shell.searchpage"))).c_str();
+  std::wstring searchUri =
+      unbox_value<hstring>(std::get<1>(Servo::GetPref(L"shell.searchpage")))
+          .c_str();
   std::wstring keyword = L"%s";
   size_t start_pos = searchUri.find(keyword);
   if (start_pos == std::string::npos)
     searchUri = searchUri + escapedInput;
   else
     searchUri.replace(start_pos, keyword.length(), escapedInput);
-  hstring finalUri {searchUri};
+  hstring finalUri{searchUri};
   TryLoadUri(finalUri);
   return finalUri;
 }
