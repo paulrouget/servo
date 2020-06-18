@@ -150,10 +150,17 @@
                 </Grid>
             </muxc:TabView.TabStripFooter>
             <muxc:TabViewItem x:Uid="devtoolsTabConsole" IsClosable="False">
-                <ScrollViewer x:Name="DevtoolsConsoleScrollViewer" VerticalScrollMode="Enabled" HorizontalScrollMode="Enabled">
-                    <RichTextBlock x:Name="DevtoolsConsoleOutput" FontSize="10" FontFamily="Consolas" LineHeight="14">
-                    </RichTextBlock>
-                </ScrollViewer>
+                <Grid VerticalAlignment="Stretch">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <ScrollViewer Grid.Row="0" x:Name="DevtoolsConsoleScrollViewer" VerticalScrollMode="Enabled" HorizontalScrollMode="Enabled" VerticalAnchorRatio="1">
+                        <RichTextBlock x:Name="DevtoolsConsoleOutput" FontSize="10" FontFamily="Consolas" LineHeight="14">
+                        </RichTextBlock>
+                    </ScrollViewer>
+                    <TextBox Grid.Row="1" Text="XXX" IsTabStop="true" x:Name="ConsoleInput" VerticalAlignment="Center" KeyUp="OnJSInputEdited" IsSpellCheckEnabled="False" Margin="3,0"/>
+                </Grid>
             </muxc:TabViewItem>
             <muxc:TabViewItem x:Uid="devtoolsTabServer" IsClosable="False">
                 <TextBlock x:Name="DevtoolsStatusMessage" Margin="10"></TextBlock>

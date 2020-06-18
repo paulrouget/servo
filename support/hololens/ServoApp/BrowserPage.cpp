@@ -305,8 +305,13 @@ void BrowserPage::OnDevtoolsMessage(DevtoolsMessageLevel level, hstring source,
     DevtoolsConsoleOutput().Blocks().Append(paragraph);
 
     // Scroll to last message
-    auto offset = DevtoolsConsoleScrollViewer().ExtentHeight();
-    DevtoolsConsoleScrollViewer().ChangeView(nullptr, offset, nullptr);
+    DispatcherTimer timer;
+    timer.Interval(std::chrono::milliseconds{200});
+    timer.Tick([=](const auto &, const auto &) {
+        auto offset = DevtoolsConsoleScrollViewer().ExtentHeight();
+        DevtoolsConsoleScrollViewer().ChangeView(nullptr, offset, nullptr);
+    });
+    timer.Start();
   });
 }
 
@@ -347,6 +352,15 @@ void BrowserPage::OnDevtoolsButtonClicked(IInspectable const &,
   } else if (mDevtoolsStatus == DevtoolsStatus::Stopped) {
     DevtoolsStatusMessage().Text(
         resourceLoader.GetString(L"devtoolsStatus/Stopped"));
+  }
+}
+
+void BrowserPage::OnJSInputEdited(IInspectable const &,
+                              Input::KeyRoutedEventArgs const &e) {
+  if (e.Key() == Windows::System::VirtualKey::Enter) {
+    auto input = ConsoleInput().Text();
+    ConsoleInput().Text(L"");
+    mDevtoolsClient->Evaluate(input);
   }
 }
 
